@@ -105,29 +105,20 @@ const App = () => {
   const [groceryList, setGroceryList] = useState(initialGroceryData);
   const [isWebAppReady, setIsWebAppReady] = useState(false);
   const webApp = useRef(null);
+  const [telegramSDKAvailable, setTelegramSDKAvailable] = useState(false);
 
   useEffect(() => {
-    const initializeWebApp = () => {
-      if (window.Telegram && window.Telegram.WebApp) {
-        webApp.current = window.Telegram.WebApp;
-        webApp.current.ready();
-        webApp.current.expand();
-        setIsWebAppReady(true);
-        if (webApp.current) {
-          console.log("WebApp version:", webApp.current.version);
-        }
-        console.log("WebApp initialized: ", webApp.current);
-      } else {
-        console.warn("Telegram Web App SDK not found.");
-        setIsWebAppReady(true); // For development fallback
-      }
-    };
-
-    // Call initialization immediately
-    initializeWebApp();
-
-    // Optionally, you can add a listener for a Telegram event
-    // that might indicate the SDK is ready (though there isn't a specific one documented for this).
+    if (window.Telegram && window.Telegram.WebApp) {
+      setTelegramSDKAvailable(true);
+      webApp.current = window.Telegram.WebApp;
+      webApp.current.ready();
+      webApp.current.expand();
+      setIsWebAppReady(true);
+      console.log("WebApp initialized: ", webApp.current);
+    } else {
+      console.warn("Telegram Web App SDK not found.");
+      setIsWebAppReady(true); // Allow development fallback
+    }
   }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
@@ -195,13 +186,36 @@ const App = () => {
           ))}
       </div>
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 shadow-lg border-t-2 border-gray-800 z-10">
-        <button
-          onClick={handleShareList}
-          className="w-full bg-purple-700 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg hover:bg-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all duration-300 transform hover:scale-105"
-          disabled={!isWebAppReady}
-        >
-          Send
-        </button>
+        {telegramSDKAvailable ? (
+          <button
+            onClick={handleShareList}
+            className="w-full bg-purple-700 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg hover:bg-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all duration-300 transform hover:scale-105"
+            disabled={!isWebAppReady}
+          >
+            Send
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              const formattedList = formatGroceryListForSharing();
+              try {
+                navigator.clipboard.writeText(formattedList);
+                alert(
+                  "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
+                );
+              } catch (err) {
+                console.error("Failed to copy text: ", err);
+                alert(
+                  "Could not automatically copy text. Please copy manually:\n\n" + formattedList
+                );
+              }
+            }}
+            className="w-full bg-gray-500 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg cursor-not-allowed"
+            disabled={true}
+          >
+            Send (Not Available)
+          </button>
+        )}
       </div>
       <div className="h-24 sm:h-28"></div>
     </div>
