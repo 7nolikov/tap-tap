@@ -8,6 +8,11 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest # Run on a fresh Ubuntu virtual machine
+    permissions: # <--- ADD THIS BLOCK
+      contents: write
+      pages: write
+      id-token: write
+
 
     steps:
       - name: Checkout code
