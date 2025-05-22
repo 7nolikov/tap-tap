@@ -108,17 +108,21 @@ const App = () => {
   const [telegramSDKAvailable, setTelegramSDKAvailable] = useState(false);
 
   useEffect(() => {
-    if (window.Telegram && window.Telegram.WebApp) {
-      setTelegramSDKAvailable(true);
-      webApp.current = window.Telegram.WebApp;
-      webApp.current.ready();
-      webApp.current.expand();
-      setIsWebAppReady(true);
-      console.log("WebApp initialized: ", webApp.current);
-    } else {
-      console.warn("Telegram Web App SDK not found.");
-      setIsWebAppReady(true); // Allow development fallback
-    }
+    const checkSDK = () => {
+      if (window.Telegram && window.Telegram.WebApp) {
+        setTelegramSDKAvailable(true);
+        webApp.current = window.Telegram.WebApp;
+        webApp.current.ready();
+        webApp.current.expand();
+        setIsWebAppReady(true);
+        console.log("WebApp initialized (delayed): ", webApp.current);
+      } else {
+        console.warn("Telegram Web App SDK not found (checking again in 500ms).");
+        setTimeout(checkSDK, 500); // Check again after a short delay
+      }
+    };
+
+    checkSDK();
   }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
