@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-// Load Telegram Web App SDK
-// This script is loaded globally by Telegram when the Mini App is opened.
-// We'll assume it's available as window.Telegram.WebApp
-
 // Define initial grocery data with categories, items, and emojis
 const initialGroceryData = [
   {
@@ -286,7 +282,8 @@ const App = () => {
   // Handle share button click
   const handleShareList = useCallback(() => {
     const formattedList = formatGroceryListForSharing();
-    if (isWebAppReady && window.Telegram.WebApp) {
+    if (isWebAppReady && window.Telegram && window.Telegram.WebApp) {
+      console.log("Sending data", window.Telegram);
       // Send data back to the bot. The bot will then handle forwarding.
       window.Telegram.WebApp.sendData(formattedList);
       window.Telegram.WebApp.close(); // Close the Mini App after sending
@@ -296,10 +293,18 @@ const App = () => {
       console.log(formattedList);
       // In a real scenario, you might prompt the user to copy this text
       // or provide a different sharing mechanism.
-      document.execCommand("copy"); // Attempt to copy to clipboard for demonstration
-      alert(
-        "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
-      );
+      try {
+        navigator.clipboard.writeText(formattedList);
+        alert(
+          "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
+        );
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+        alert(
+          "Could not automatically copy text. Please copy manually:\n\n" +
+            formattedList
+        );
+      }
     }
   }, [formatGroceryListForSharing, isWebAppReady]);
 
