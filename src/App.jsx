@@ -107,23 +107,22 @@ const App = () => {
   const webApp = useRef(null);
 
   useEffect(() => {
+    console.log("WebApp initialization useEffect running...");
     if (window.Telegram && window.Telegram.WebApp) {
       webApp.current = window.Telegram.WebApp;
       webApp.current.ready();
       webApp.current.expand();
       setIsWebAppReady(true);
-      console.log("WebApp initialized successfully.");
+      console.log("WebApp initialized: ", webApp.current);
     } else {
-      console.warn("Telegram Web App SDK not found. Running in standalone mode.");
-      setIsWebAppReady(true); // Allow development without Telegram
+      console.warn("Telegram Web App SDK not found.");
+      setIsWebAppReady(true); // For development fallback
     }
   }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
     setGroceryList((prevList) =>
-      prevList.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
-      )
+      prevList.map((item) => (item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item))
     );
   }, []);
 
@@ -143,8 +142,9 @@ const App = () => {
 
   const handleShareList = useCallback(() => {
     const formattedList = formatGroceryListForSharing();
+    console.log("Send button clicked. isWebAppReady:", isWebAppReady, "webApp.current:", webApp.current);
     if (isWebAppReady && webApp.current) {
-      console.log("Sending data to bot...");
+      console.log("Attempting to send data to bot...", webApp.current);
       webApp.current.sendData(formattedList);
       webApp.current.close();
     } else {
@@ -188,7 +188,7 @@ const App = () => {
         <button
           onClick={handleShareList}
           className="w-full bg-purple-700 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg hover:bg-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all duration-300 transform hover:scale-105"
-          disabled={!isWebAppReady} // Disable the button if WebApp is not ready
+          disabled={!isWebAppReady}
         >
           Send
         </button>
