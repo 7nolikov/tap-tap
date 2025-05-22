@@ -107,17 +107,27 @@ const App = () => {
   const webApp = useRef(null);
 
   useEffect(() => {
-    console.log("WebApp initialization useEffect running...");
-    if (window.Telegram && window.Telegram.WebApp) {
-      webApp.current = window.Telegram.WebApp;
-      webApp.current.ready();
-      webApp.current.expand();
-      setIsWebAppReady(true);
-      console.log("WebApp initialized: ", webApp.current);
-    } else {
-      console.warn("Telegram Web App SDK not found.");
-      setIsWebAppReady(true); // For development fallback
-    }
+    const initializeWebApp = () => {
+      if (window.Telegram && window.Telegram.WebApp) {
+        webApp.current = window.Telegram.WebApp;
+        webApp.current.ready();
+        webApp.current.expand();
+        setIsWebAppReady(true);
+        if (webApp.current) {
+          console.log("WebApp version:", webApp.current.version);
+        }
+        console.log("WebApp initialized: ", webApp.current);
+      } else {
+        console.warn("Telegram Web App SDK not found.");
+        setIsWebAppReady(true); // For development fallback
+      }
+    };
+
+    // Call initialization immediately
+    initializeWebApp();
+
+    // Optionally, you can add a listener for a Telegram event
+    // that might indicate the SDK is ready (though there isn't a specific one documented for this).
   }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
