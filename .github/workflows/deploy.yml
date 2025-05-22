@@ -1,0 +1,35 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # This workflow runs when changes are pushed to the 'main' branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest # Run on a fresh Ubuntu virtual machine
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Action to check out your repository code
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use Node.js version 20 (or a version compatible with your React app)
+          cache: 'npm' # Cache npm dependencies to speed up builds
+
+      - name: Install dependencies
+        run: npm install # Install your project's npm dependencies
+
+      - name: Build React App
+        # For Vite, the default build output is 'dist'
+        run: npm run build # Runs the 'build' script defined in your package.json
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4 # A popular GitHub Action for deploying to gh-pages
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }} # GitHub's built-in token for actions
+          publish_dir: ./dist # The directory containing your built app (Vite uses 'dist')
+          publish_branch: gh-pages # The branch to publish to (GitHub Pages uses this branch)
+          # cname: your-custom-domain.com # Uncomment and set if you use a custom domain
