@@ -106,23 +106,22 @@ const App = () => {
   const [isWebAppReady, setIsWebAppReady] = useState(false);
   const webApp = useRef(null);
   const [telegramSDKAvailable, setTelegramSDKAvailable] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
-    const checkSDK = () => {
-      if (window.Telegram && window.Telegram.WebApp) {
-        setTelegramSDKAvailable(true);
-        webApp.current = window.Telegram.WebApp;
-        webApp.current.ready();
-        webApp.current.expand();
-        setIsWebAppReady(true);
-        console.log("WebApp initialized (delayed): ", webApp.current);
-      } else {
-        console.warn("Telegram Web App SDK not found (checking again in 500ms).");
-        setTimeout(checkSDK, 500); // Check again after a short delay
-      }
-    };
-
-    checkSDK();
+    if (window.Telegram && window.Telegram.WebApp) {
+      setTelegramSDKAvailable(true);
+      webApp.current = window.Telegram.WebApp;
+      webApp.current.ready();
+      webApp.current.expand();
+      setIsWebAppReady(true);
+      console.log("WebApp initialized: ", webApp.current);
+      setErrorMessage(null); // Clear any previous errors
+    } else {
+      console.warn("Telegram Web App SDK not found (after explicit include).");
+      setErrorMessage("Telegram Web App SDK not found. Some features might not work.");
+      setIsWebAppReady(true); // Allow development fallback
+    }
   }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
@@ -150,10 +149,17 @@ const App = () => {
     console.log("Send button clicked. isWebAppReady:", isWebAppReady, "webApp.current:", webApp.current);
     if (isWebAppReady && webApp.current) {
       console.log("Attempting to send data to bot...", webApp.current);
-      webApp.current.sendData(formattedList);
-      webApp.current.close();
+      try {
+        webApp.current.sendData(formattedList);
+        webApp.current.close();
+        setErrorMessage(null);
+      } catch (error) {
+        console.error("Error sending data:", error);
+        setErrorMessage(`Failed to send data: ${error.message}`);
+      }
     } else {
       console.warn("WebApp not ready, using fallback (copy to clipboard).");
+      setErrorMessage("WebApp not ready. Please try again or use the fallback.");
       try {
         navigator.clipboard.writeText(formattedList);
         alert(
@@ -161,6 +167,7 @@ const App = () => {
         );
       } catch (err) {
         console.error("Failed to copy text: ", err);
+        setErrorMessage(`Could not copy text to clipboard: ${err.message}`);
         alert(
           "Could not automatically copy text. Please copy manually:\n\n" + formattedList
         );
@@ -182,6 +189,14 @@ const App = () => {
         `}
       </style>
       <h1 className="text-4xl font-extrabold text-center mb-8 text-purple-400 drop-shadow-sm">Grocery List</h1>
+
+      {errorMessage && (
+        <div className="bg-red-200 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong className="font-bold">Error!</strong>
+          <span className="block sm:inline">{errorMessage}</span>
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto">
         {Object.keys(groupedGroceries)
           .sort()
@@ -207,8 +222,10 @@ const App = () => {
                 alert(
                   "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
                 );
+                setErrorMessage(null);
               } catch (err) {
                 console.error("Failed to copy text: ", err);
+                setErrorMessage(`Could not copy text to clipboard: ${err.message}`);
                 alert(
                   "Could not automatically copy text. Please copy manually:\n\n" + formattedList
                 );
