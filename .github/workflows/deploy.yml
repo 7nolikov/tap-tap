@@ -1,19 +1,27 @@
-name: Deploy to GitHub Pages
+name: Deploy React App to GitHub Pages
 
 on:
   push:
     branches:
-      - main # This workflow runs when changes are pushed to the 'main' branch
+      - main # Trigger the workflow every time you push to the `main` branch
+  # Allows you to run this workflow manually from the Actions tab on GitHub.
+  workflow_dispatch:
+
+# Grant permissions for the GITHUB_TOKEN
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Ensure only one deploy workflow is running at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  # Build job: Builds the React app and uploads it as an artifact
+  build:
     runs-on: ubuntu-latest # Run on a fresh Ubuntu virtual machine
-    permissions: # <--- ADD THIS BLOCK
-      contents: write
-      pages: write
-      id-token: write
-
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4 # Action to check out your repository code
@@ -31,10 +39,23 @@ jobs:
         # For Vite, the default build output is 'dist'
         run: npm run build # Runs the 'build' script defined in your package.json
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4 # A popular GitHub Action for deploying to gh-pages
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5 # Configures GitHub Pages environment
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3 # Uploads the built app as an artifact
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # GitHub's built-in token for actions
-          publish_dir: ./dist # The directory containing your built app (Vite uses 'dist')
-          publish_branch: gh-pages # The branch to publish to (GitHub Pages uses this branch)
-          # cname: your-custom-domain.com # Uncomment and set if you use a custom domain
+          path: './dist' # The directory containing your built app (Vite uses 'dist')
+
+  # Deploy job: Deploys the artifact to GitHub Pages hosting
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }} # URL where the site is deployed
+    runs-on: ubuntu-latest
+    needs: build # This job depends on the 'build' job completing successfully
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 # Deploys the uploaded artifact to GitHub Pages
