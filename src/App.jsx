@@ -103,30 +103,14 @@ const Category = ({ categoryName, items, updateQuantity }) => {
 
 const App = () => {
   const [groceryList, setGroceryList] = useState(initialGroceryData);
-  const [isWebAppReady, setIsWebAppReady] = useState(false);
   const webApp = useRef(null);
-  const [telegramSDKAvailable, setTelegramSDKAvailable] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
-
-  useEffect(() => {
-    if (window.Telegram && window.Telegram.WebApp) {
-      setTelegramSDKAvailable(true);
-      webApp.current = window.Telegram.WebApp;
-      webApp.current.ready();
-      webApp.current.expand();
-      setIsWebAppReady(true);
-      console.log("WebApp initialized: ", webApp.current);
-      setErrorMessage(null); // Clear any previous errors
-    } else {
-      console.warn("Telegram Web App SDK not found (after explicit include).");
-      setErrorMessage("Telegram Web App SDK not found. Some features might not work.");
-      setIsWebAppReady(true); // Allow development fallback
-    }
-  }, []);
 
   const updateQuantity = useCallback((id, delta, unit) => {
     setGroceryList((prevList) =>
-      prevList.map((item) => (item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item))
+      prevList.map((item) =>
+        item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
+      )
     );
   }, []);
 
@@ -144,36 +128,33 @@ const App = () => {
     return formattedString;
   }, [groceryList]);
 
-  const handleShareList = useCallback(() => {
-    const formattedList = formatGroceryListForSharing();
-    console.log("Send button clicked. isWebAppReady:", isWebAppReady, "webApp.current:", webApp.current);
-    if (isWebAppReady && webApp.current) {
-      console.log("Attempting to send data to bot...", webApp.current);
-      try {
-        webApp.current.sendData(formattedList);
-        webApp.current.close();
-        setErrorMessage(null);
-      } catch (error) {
-        console.error("Error sending data:", error);
-        setErrorMessage(`Failed to send data: ${error.message}`);
-      }
+  useEffect(() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+      webApp.current = window.Telegram.WebApp;
+      webApp.current.ready();
+      webApp.current.expand();
+
+      const formattedList = formatGroceryListForSharing();
+      webApp.current.MainButton.setParams({
+        text: "Send Grocery List",
+        is_visible: true,
+        is_active: true,
+      });
+
+      webApp.current.onEvent("mainButtonClicked", () => {
+        try {
+          const listToSend = formatGroceryListForSharing();
+          webApp.current.sendData(listToSend);
+          webApp.current.close();
+        } catch (error) {
+          console.error("Error sending data:", error);
+          setErrorMessage("Failed to send list. Please try again.");
+        }
+      });
     } else {
-      console.warn("WebApp not ready, using fallback (copy to clipboard).");
-      setErrorMessage("WebApp not ready. Please try again or use the fallback.");
-      try {
-        navigator.clipboard.writeText(formattedList);
-        alert(
-          "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
-        );
-      } catch (err) {
-        console.error("Failed to copy text: ", err);
-        setErrorMessage(`Could not copy text to clipboard: ${err.message}`);
-        alert(
-          "Could not automatically copy text. Please copy manually:\n\n" + formattedList
-        );
-      }
+      setErrorMessage("Telegram WebApp API not available.");
     }
-  }, [formatGroceryListForSharing, isWebAppReady, webApp]);
+  }, [formatGroceryListForSharing]);
 
   const groupedGroceries = groupItemsByCategory(groceryList);
 
@@ -188,6 +169,7 @@ const App = () => {
         .animate-pulse-once { animation: pulse-once 0.3s ease-out; }
         `}
       </style>
+
       <h1 className="text-4xl font-extrabold text-center mb-8 text-purple-400 drop-shadow-sm">Grocery List</h1>
 
       {errorMessage && (
@@ -201,42 +183,13 @@ const App = () => {
         {Object.keys(groupedGroceries)
           .sort()
           .map((category) => (
-            <Category key={category} categoryName={category} items={groupedGroceries[category]} updateQuantity={updateQuantity} />
+            <Category
+              key={category}
+              categoryName={category}
+              items={groupedGroceries[category]}
+              updateQuantity={updateQuantity}
+            />
           ))}
-      </div>
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 shadow-lg border-t-2 border-gray-800 z-10">
-        {telegramSDKAvailable ? (
-          <button
-            onClick={handleShareList}
-            className="w-full bg-purple-700 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg hover:bg-purple-800 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all duration-300 transform hover:scale-105"
-            disabled={!isWebAppReady}
-          >
-            Send
-          </button>
-        ) : (
-          <button
-            onClick={() => {
-              const formattedList = formatGroceryListForSharing();
-              try {
-                navigator.clipboard.writeText(formattedList);
-                alert(
-                  "Grocery list copied to clipboard (for demonstration purposes). In Telegram, this would be sent to the bot."
-                );
-                setErrorMessage(null);
-              } catch (err) {
-                console.error("Failed to copy text: ", err);
-                setErrorMessage(`Could not copy text to clipboard: ${err.message}`);
-                alert(
-                  "Could not automatically copy text. Please copy manually:\n\n" + formattedList
-                );
-              }
-            }}
-            className="w-full bg-gray-500 text-white py-3 px-6 rounded-full text-lg font-semibold shadow-lg cursor-not-allowed"
-            disabled={true}
-          >
-            Send (Not Available)
-          </button>
-        )}
       </div>
       <div className="h-24 sm:h-28"></div>
     </div>
