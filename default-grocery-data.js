@@ -10,9 +10,9 @@ const defaultGroceryData = {
             textColorClass: 'text-yellow-400', // Tailwind class for the title
             borderColorClass: 'border-yellow-500', // Tailwind class for the border
             items: [
-                { id: 'item_bread_001', name: '🍞 Bread', unit: 'loaf' },
-                { id: 'item_bagels_002', name: '🥯 Bagels', unit: 'pack' },
-                { id: 'item_tortillas_003', name: '🌮 Tortillas', unit: 'pack' }
+                { id: 'item_bread_001', name: '🍞 Bread', unit: 'loaf', incrementStep: 1 },
+                { id: 'item_bagels_002', name: '🥯 Bagels', unit: 'pack', incrementStep: 1 },
+                { id: 'item_tortillas_003', name: '🌮 Tortillas', unit: 'pack', incrementStep: 1 }
             ]
         },
         {
@@ -22,11 +22,11 @@ const defaultGroceryData = {
             textColorClass: 'text-blue-400',
             borderColorClass: 'border-blue-500',
             items: [
-                { id: 'item_milk_004', name: '🥛 Milk', unit: 'liter' },
-                { id: 'item_cheese_005', name: '🧀 Cheese', unit: 'g' },
-                { id: 'item_eggs_006', name: '🥚 Eggs', unit: 'pcs' },
-                { id: 'item_yogurt_007', name: '🍦 Yogurt', unit: 'pot' },
-                { id: 'item_butter_008', name: '🧈 Butter', unit: 'pack' }
+                { id: 'item_milk_004', name: '🥛 Milk', unit: 'liter', incrementStep: 1 },
+                { id: 'item_cheese_005', name: '🧀 Cheese', unit: 'g', incrementStep: 50 },
+                { id: 'item_eggs_006', name: '🥚 Eggs', unit: 'pcs', incrementStep: 6 }, // e.g. half-dozen
+                { id: 'item_yogurt_007', name: '🍦 Yogurt', unit: 'pot', incrementStep: 1 },
+                { id: 'item_butter_008', name: '🧈 Butter', unit: 'pack', incrementStep: 1 }
             ]
         },
         {
@@ -36,10 +36,10 @@ const defaultGroceryData = {
             textColorClass: 'text-orange-400',
             borderColorClass: 'border-orange-500',
             items: [
-                { id: 'item_apples_009', name: '🍎 Apples', unit: 'pcs' },
-                { id: 'item_bananas_010', name: '🍌 Bananas', unit: 'pcs' },
-                { id: 'item_berries_011', name: '🍓 Berries', unit: 'box' },
-                { id: 'item_oranges_012', name: '🍊 Oranges', unit: 'pcs' }
+                { id: 'item_apples_009', name: '🍎 Apples', unit: 'pcs', incrementStep: 1 },
+                { id: 'item_bananas_010', name: '🍌 Bananas', unit: 'pcs', incrementStep: 1 },
+                { id: 'item_berries_011', name: '🍓 Berries', unit: 'box', incrementStep: 1 },
+                { id: 'item_oranges_012', name: '🍊 Oranges', unit: 'pcs', incrementStep: 1 }
             ]
         },
         {
@@ -49,12 +49,12 @@ const defaultGroceryData = {
             textColorClass: 'text-green-400',
             borderColorClass: 'border-green-500',
             items: [
-                { id: 'item_lettuce_013', name: '🥬 Lettuce', unit: 'head' },
-                { id: 'item_tomatoes_014', name: '🍅 Tomatoes', unit: 'kg' },
-                { id: 'item_onions_015', name: '🧅 Onions', unit: 'kg' },
-                { id: 'item_potatoes_016', name: '🥔 Potatoes', unit: 'kg' },
-                { id: 'item_carrots_017', name: '🥕 Carrots', unit: 'kg' },
-                { id: 'item_broccoli_018', name: '🥦 Broccoli', unit: 'head' }
+                { id: 'item_lettuce_013', name: '🥬 Lettuce', unit: 'head', incrementStep: 1 },
+                { id: 'item_tomatoes_014', name: '🍅 Tomatoes', unit: 'kg', incrementStep: 0.5 }, // Example: 0.5 kg steps
+                { id: 'item_onions_015', name: '🧅 Onions', unit: 'kg', incrementStep: 0.5 },
+                { id: 'item_potatoes_016', name: '🥔 Potatoes', unit: 'kg', incrementStep: 1 },
+                { id: 'item_carrots_017', name: '🥕 Carrots', unit: 'kg', incrementStep: 0.5 },
+                { id: 'item_broccoli_018', name: '🥦 Broccoli', unit: 'head', incrementStep: 1 }
             ]
         },
         {
@@ -64,10 +64,10 @@ const defaultGroceryData = {
             textColorClass: 'text-red-400',
             borderColorClass: 'border-red-500',
             items: [
-                { id: 'item_chicken_019', name: '🍗 Chicken Breast', unit: 'kg' },
-                { id: 'item_beef_020', name: '🥩 Beef Mince', unit: 'kg' },
-                { id: 'item_sausages_021', name: '🌭 Sausages', unit: 'pack' },
-                { id: 'item_fish_022', name: '🐟 Fish Fillet', unit: 'kg' }
+                { id: 'item_chicken_019', name: '🍗 Chicken Breast', unit: 'kg', incrementStep: 0.5 },
+                { id: 'item_beef_020', name: '🥩 Beef Mince', unit: 'g', incrementStep: 100 },
+                { id: 'item_sausages_021', name: '🌭 Sausages', unit: 'pack', incrementStep: 1 },
+                { id: 'item_fish_022', name: '🐟 Fish Fillet', unit: 'g', incrementStep: 100 }
             ]
         },
         {
@@ -77,13 +77,13 @@ const defaultGroceryData = {
             textColorClass: 'text-zinc-400',
             borderColorClass: 'border-zinc-500',
             items: [
-                { id: 'item_pasta_023', name: '🍝 Pasta', unit: 'pack' },
-                { id: 'item_rice_024', name: '🍚 Rice', unit: 'kg' },
-                { id: 'item_cereal_025', name: '🥣 Cereal', unit: 'box' },
-                { id: 'item_oil_026', name: '🍾 Cooking Oil', unit: 'bottle' },
-                { id: 'item_flour_027', name: '🌾 Flour', unit: 'kg' },
-                { id: 'item_sugar_028', name: '🧂 Sugar', unit: 'kg' },
-                { id: 'item_coffee_029', name: '☕ Coffee', unit: 'pack' }
+                { id: 'item_pasta_023', name: '🍝 Pasta', unit: 'g', incrementStep: 500 },
+                { id: 'item_rice_024', name: '🍚 Rice', unit: 'kg', incrementStep: 1 },
+                { id: 'item_cereal_025', name: '🥣 Cereal', unit: 'box', incrementStep: 1 },
+                { id: 'item_oil_026', name: '🍾 Cooking Oil', unit: 'bottle', incrementStep: 1 },
+                { id: 'item_flour_027', name: '🌾 Flour', unit: 'kg', incrementStep: 1 },
+                { id: 'item_sugar_028', name: '🧂 Sugar', unit: 'kg', incrementStep: 1 },
+                { id: 'item_coffee_029', name: '☕ Coffee', unit: 'pack', incrementStep: 1 }
             ]
         },
         {
@@ -93,9 +93,9 @@ const defaultGroceryData = {
             textColorClass: 'text-cyan-400',
             borderColorClass: 'border-cyan-500',
             items: [
-                { id: 'item_frozveg_030', name: '🥕 Frozen Vegetables', unit: 'bag' },
-                { id: 'item_icecream_031', name: '🍨 Ice Cream', unit: 'tub' },
-                { id: 'item_pizza_032', name: '🍕 Frozen Pizza', unit: 'pcs' }
+                { id: 'item_frozveg_030', name: '🥕 Frozen Vegetables', unit: 'bag', incrementStep: 1 },
+                { id: 'item_icecream_031', name: '🍨 Ice Cream', unit: 'tub', incrementStep: 1 },
+                { id: 'item_pizza_032', name: '🍕 Frozen Pizza', unit: 'pcs', incrementStep: 1 }
             ]
         },
         {
@@ -105,9 +105,9 @@ const defaultGroceryData = {
             textColorClass: 'text-indigo-400',
             borderColorClass: 'border-indigo-500',
             items: [
-                { id: 'item_water_033', name: '💧 Water Bottles', unit: 'pack' },
-                { id: 'item_juice_034', name: '🧃 Juice', unit: 'carton' },
-                { id: 'item_soda_035', name: '🥤 Soda', unit: 'can' }
+                { id: 'item_water_033', name: '💧 Water Bottles', unit: 'pack', incrementStep: 1 },
+                { id: 'item_juice_034', name: '🧃 Juice', unit: 'carton', incrementStep: 1 },
+                { id: 'item_soda_035', name: '🥤 Soda', unit: 'can', incrementStep: 6 }
             ]
         }
     ]

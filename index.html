@@ -50,25 +50,34 @@
             background-image: none; /* Remove default arrow on some systems if not covered by Tailwind's appearance-none */
             padding-right: 2.5rem; /* Space for custom arrow */
         }
+        .non-selectable {
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
     </style>
 </head>
 <body class="bg-primary-bg text-text-primary min-h-screen flex flex-col">
 
     <!-- Header -->
     <header class="p-4 md:p-6 text-center sticky top-0 z-10 bg-primary-bg/95 backdrop-blur-md pb-3 shadow-md">
-        <div id="preset-title-dropdown-container" class="relative max-w-md mx-auto">
-            <select id="preset-selector" name="preset_id"
-                class="text-2xl md:text-3xl font-bold text-purple-400 text-center w-full bg-transparent border-0 p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate"
-                hx-on:change="
-                    console.log('Preset selection changed to:', this.value, this.options[this.selectedIndex].text);
-                    htmx.trigger('#categories-container', 'loadPresetContent', { presetId: this.value, presetName: this.options[this.selectedIndex].text });
-                "
-            >
-                <option value="" disabled selected>Loading Presets...</option> <!-- Initial placeholder, JS will replace -->
-            </select>
-            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-purple-400 opacity-75">
-                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        <div id="preset-title-dropdown-container" class="relative max-w-md mx-auto flex items-center justify-center">
+            <!-- Edit, Delete, and Add buttons are removed from here -->
+            <div class="relative flex-grow max-w-xs sm:max-w-sm md:max-w-md">
+                <select id="preset-selector" name="preset_id"
+                    class="text-2xl md:text-3xl font-bold text-purple-400 text-center w-full bg-transparent border-0 p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate"
+                    hx-on:change="
+                        handlePresetChange(this); // Centralized logic in app.js
+                    "
+                >
+                    <option value="" disabled selected>Loading Presets...</option> <!-- JS will replace -->
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-purple-400 opacity-75">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
             </div>
+            <!-- Plus button is also removed from here -->
         </div>
     </header>
 
@@ -108,9 +117,9 @@
             "
         >
             <div id="categories-loading-indicator" class="htmx-indicator text-center py-10">
-                <p class="text-gray-400 text-lg">Loading items...</p>
+                <p class="text-gray-400 text-lg non-selectable">Loading items...</p>
             </div>
-            <p id="categories-placeholder" class="text-center text-gray-500 py-10">Initializing...</p>
+            <p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">Initializing...</p>
         </div>
     </main>
 
