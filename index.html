@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickShare List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-bg': '#0D1117', // Darker background like the image
+                        'container-bg': '#161B22', // Slightly lighter container
+                        'item-bg': '#0D1117', // Item background, can be same as primary or slightly different
+                        'text-primary': '#C9D1D9', // Lighter text for better contrast
+                        'text-secondary': '#8B949E', // For less prominent text like units
+                        'accent': '#58A6FF', // A vibrant blue for accents
+                        'accent-darker': '#1F6FEB',
+                        'button-actions': '#238636', // Green for add, or a general action color
+                        'button-remove': '#DA3633', // Red for remove
+                        // Category border colors from image (examples)
+                        'border-yellow': '#F1E05A', 
+                        'border-blue': '#3B82F6', // Existing accent can be reused
+                        'border-orange': '#F98222',
+                        'border-pink': '#EC4899',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .category-border {
+            border-width: 2px;
+            border-style: solid;
+            border-radius: 0.5rem; /* Corresponds to rounded-lg */
+        }
+        /* Custom styling for the select to make it look like a title */
+        #preset-selector {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: none; /* Remove default arrow on some systems if not covered by Tailwind's appearance-none */
+            padding-right: 2.5rem; /* Space for custom arrow */
+        }
+    </style>
+</head>
+<body class="bg-primary-bg text-text-primary min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="p-4 md:p-6 text-center sticky top-0 z-10 bg-primary-bg/95 backdrop-blur-md pb-3 shadow-md">
+        <div id="preset-title-dropdown-container" class="relative max-w-md mx-auto">
+            <select id="preset-selector" name="preset_id"
+                class="text-2xl md:text-3xl font-bold text-purple-400 text-center w-full bg-transparent border-0 p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate"
+                hx-on:change="
+                    console.log('Preset selection changed to:', this.value, this.options[this.selectedIndex].text);
+                    htmx.trigger('#categories-container', 'loadPresetContent', { presetId: this.value, presetName: this.options[this.selectedIndex].text });
+                "
+            >
+                <option value="" disabled selected>Loading Presets...</option> <!-- Initial placeholder, JS will replace -->
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-purple-400 opacity-75">
+                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto p-4 flex-grow mt-2 md:mt-4">
+        <div id="categories-container" class="space-y-8"
+            hx-get="/api/categories-for-preset" <!-- Server at this endpoint reads 'presetId' from event detail -->
+            hx-trigger="loadPresetContent from:body" <!-- Listen for event from anywhere -->
+            hx-target="this"
+            hx-swap="innerHTML"
+            hx-indicator="#categories-loading-indicator"
+            hx-on:htmx:before-request="
+                let placeholder = document.getElementById('categories-placeholder');
+                if(placeholder) placeholder.classList.add('hidden');
+            "
+            hx-on:htmx:after-settle="
+                if(typeof resetSelectedItemsAndUI === 'function') resetSelectedItemsAndUI();
+                console.log('Categories container updated by HTMX.');
+                let container = document.getElementById('categories-container');
+                let placeholder = document.getElementById('categories-placeholder');
+                if (container && placeholder && container.children.length === 1 && container.children[0].id === 'categories-loading-indicator') {
+                    // If only loading indicator is present after settle, means empty response or error
+                    placeholder.textContent = 'No items found for this preset or failed to load.';
+                    htmx.removeClass(placeholder, 'hidden');
+                } else if (container && placeholder && container.children.length === 0) {
+                     placeholder.textContent = 'No items in this preset.';
+                     htmx.removeClass(placeholder, 'hidden');
+                }
+            "
+            hx-on:htmx:target-error="
+                let placeholder = document.getElementById('categories-placeholder');
+                if(placeholder) {
+                    placeholder.textContent = 'Error loading items. Please try again.';
+                    htmx.removeClass(placeholder, 'hidden');
+                }
+                console.error('HTMX target error on categories-container');
+            "
+        >
+            <div id="categories-loading-indicator" class="htmx-indicator text-center py-10">
+                <p class="text-gray-400 text-lg">Loading items...</p>
+            </div>
+            <p id="categories-placeholder" class="text-center text-gray-500 py-10">Initializing...</p>
+        </div>
+    </main>
+
+    <!-- Footer with Send Button -->
+    <footer id="send-button-container" class="bg-container-bg p-4 shadow-md sticky bottom-0 hidden border-t border-gray-700">
+        <div class="container mx-auto">
+            <div id="selected-items-preview" class="mb-3 text-sm text-gray-400">
+                <!-- Selected items will be summarized here -->
+            </div>
+            <button 
+                id="send-button"
+                class="w-full bg-accent hover:bg-accent-darker text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick="sendList()"
+                disabled>
+                Send List
+            </button>
+        </div>
+    </footer>
+
+    <script src="config.js"></script> 
+    <script src="default-grocery-data.js"></script> <!-- Load default grocery data -->
+    <script src="app.js"></script>
+</body>
+</html> 
