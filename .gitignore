@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 
 DESIGN_DOCUMENT.md
+docs/*
