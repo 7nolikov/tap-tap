@@ -1,4 +1,4 @@
-name: Deploy React App to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -35,9 +35,10 @@ jobs:
       - name: Install dependencies
         run: npm install # Install your project's npm dependencies
 
-      - name: Build React App
-        # For Vite, the default build output is 'dist'
-        run: npm run build # Runs the 'build' script defined in your package.json
+      - name: Build static assets
+        # This command should run your Tailwind CSS build script and
+        # move all necessary static files (index.html, images, etc.) to the output directory.
+        run: npm run build
 
       - name: Setup Pages
         id: pages
