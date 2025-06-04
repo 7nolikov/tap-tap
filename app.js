@@ -682,4 +682,49 @@ function resetSelectedItemsAndUI() { /* ... */
     updateSendButtonVisibilityAndPreview();
 }
 
-console.log("app.js loaded. Preset management reverted to dropdown with modal controls."); 
+console.log("app.js loaded. Preset management reverted to dropdown with modal controls.");
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('appData', () => ({
+        // Your Alpine.js reactive data can go here
+        init() {
+            console.log('Alpine.js initialized with appData.');
+            // Initialize Telegram WebApp interaction if needed
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Telegram WebApp is available.');
+                // Example: Send data to your bot
+                // Telegram.WebApp.sendData('Hello from Mini App!');
+            }
+        },
+        // Example function
+        showTelegramUserInfo() {
+            if (window.Telegram && window.Telegram.WebApp && Telegram.WebApp.initDataUnsafe.user) {
+                const user = Telegram.WebApp.initDataUnsafe.user;
+                alert(`Hello, ${user.first_name}! Your user ID is ${user.id}.`);
+            } else {
+                alert('Telegram user data not available.');
+            }
+        }
+    }));
+});
+
+console.log("App.js loaded.");
+
+// Example of how you might use HTMX events with JavaScript
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    console.log('HTMX content swapped:', event.detail.target);
+    // You might want to re-initialize Alpine components or other JS here if needed
+    // For example, if new Alpine components are loaded via HTMX
+});
+
+// You can also initialize Supabase client here once config.js loads it
+// if (window.supabase) {
+//     console.log('Supabase client available in app.js');
+//     // Example query
+//     // async function getUsers() {
+//     //     const { data, error } = await supabase.from('users').select();
+//     //     if (error) console.error('Error fetching users:', error);
+//     //     else console.log('Users:', data);
+//     // }
+//     // getUsers();
+// } 

@@ -1,0 +1,12 @@
+{
+  "name": "quickshare-list",
+  "version": "0.1.0",
+  "description": "QuickShare List Telegram Mini App",
+  "scripts": {
+    "build:css": "tailwindcss -i ./input.css -o ./style.css --minify",
+    "dev:css": "tailwindcss -i ./input.css -o ./style.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+} 
