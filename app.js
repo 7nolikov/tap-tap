@@ -14,6 +14,7 @@ let currentActivePresetName = "Loading..."; // Will be set by loadPresetContent
 let userPresetsCache = []; // To store fetched user presets: [{id: '...', name: '...'}, ...]
 
 const DEFAULT_PRESET_ID = 'default_grocery_list_001';
+const MOCK_TELEGRAM_USER_ID = '123456789'; // Placeholder for actual Telegram User ID
 
 // Action IDs for dropdown options
 const ACTION_SEPARATOR_ID = 'action_manage_separator';
@@ -149,24 +150,27 @@ async function fetchUserPresets() {
     console.log("Fetching user presets...");
     if (!isSupabaseConnected || !window.supabaseClient) {
         console.warn("Supabase not connected. Cannot fetch user presets.");
-        return []; // Return empty if Supabase is not available
+        return []; 
     }
     try {
-        // Actual Supabase call (still placeholder)
-        // const { data, error } = await window.supabaseClient.from('presets').select('id, name').eq('telegram_user_id', 'YOUR_TELEGRAM_USER_ID'); // Use window.supabaseClient
-        // if (error) throw error; 
-        // return data;
+        console.log(`Fetching presets for Telegram User ID: ${MOCK_TELEGRAM_USER_ID}`);
+        const { data, error } = await window.supabaseClient
+            .from('presets')
+            .select('id, name')
+            .eq('telegram_user_id', MOCK_TELEGRAM_USER_ID);
+
+        if (error) {
+            console.error("Error fetching user presets:", error);
+            showModal("Error Fetching Presets", `Could not load your presets: ${error.message}`);
+            return [];
+        }
         
-        // Using mock data for now if Supabase is connected
-        console.log("Using MOCK user presets (Supabase connected).");
-        return Promise.resolve([
-            { id: 'user_preset_123', name: 'My Weekly Shop' }, // Mock data for development
-            { id: 'user_preset_456', name: 'Weekend BBQ Plan' }  // Mock data for development
-        ]);
+        console.log("Fetched user presets from Supabase:", data);
+        return data || [];
     } catch (error) {
-        console.error("Error fetching user presets:", error);
-        showModal("Error", "Could not load your presets from the cloud. Please check your connection and try again.");
-        return []; // Return empty on error
+        console.error("Exception during fetchUserPresets:", error);
+        showModal("Error", "An unexpected error occurred while fetching your presets.");
+        return [];
     }
 }
 
@@ -233,12 +237,82 @@ function handleAddPreset() {
         showModal("Feature Unavailable", "Cannot create new presets while offline. Please check your connection to Supabase.");
         return;
     }
-    // For now, use a simple alert. Later, this will open a modal or navigate.
-    showModal("Create Preset", "<p>Preset creation form will be here.</p>", [
-        {text: "Cancel"}, 
-        {text: "Save (Not Implemented)", class: "bg-accent text-white", onClick: () => alert("Save not implemented")}
+
+    const modalContentHTML = `
+        <div>
+            <label for="new-preset-name-input" class="block text-sm font-medium text-text-primary mb-1">Preset Name:</label>
+            <input type="text" id="new-preset-name-input" placeholder="Enter preset name" 
+                   class="w-full px-3 py-2 bg-primary-bg border border-gray-600 rounded-md text-text-primary focus:ring-accent focus:border-accent">
+            <p id="create-preset-error" class="text-red-500 text-sm mt-1 hidden"></p>
+        </div>
+    `;
+
+    showModal("Create New Preset", modalContentHTML, [
+        { text: "Cancel", class: "bg-gray-700 hover:bg-gray-600" },
+        {
+            text: "Save Preset", 
+            class: "bg-accent hover:bg-accent-darker text-white", 
+            hideOnClick: false, // Keep modal open for potential error messages
+            onClick: async () => {
+                const nameInput = document.getElementById('new-preset-name-input');
+                const errorP = document.getElementById('create-preset-error');
+                const newName = nameInput.value.trim();
+
+                if (!newName) {
+                    errorP.textContent = "Preset name cannot be empty.";
+                    errorP.classList.remove('hidden');
+                    nameInput.focus();
+                    return;
+                }
+                errorP.classList.add('hidden');
+
+                try {
+                    // Check if preset with the same name already exists for this user
+                    const existingCheck = userPresetsCache.find(p => p.name.toLowerCase() === newName.toLowerCase());
+                    if (existingCheck || (window.defaultGroceryData && window.defaultGroceryData.name.toLowerCase() === newName.toLowerCase())) {
+                        errorP.textContent = "A preset with this name already exists.";
+                        errorP.classList.remove('hidden');
+                        nameInput.focus();
+                        return;
+                    }
+
+                    const { data, error } = await window.supabaseClient
+                        .from('presets')
+                        .insert([{ name: newName, telegram_user_id: MOCK_TELEGRAM_USER_ID }])
+                        .select(); // .select() will return the inserted rows
+
+                    if (error) {
+                        console.error("Error creating preset:", error);
+                        errorP.textContent = `Failed to save: ${error.message}`;
+                        errorP.classList.remove('hidden');
+                        return;
+                    }
+
+                    if (data && data.length > 0) {
+                        console.log("Preset created successfully:", data[0]);
+                        userPresetsCache.push(data[0]); // Add to local cache
+                        await populatePresetSelector(); // Repopulate and re-render selector
+                        // Select the new preset
+                        if(dom.presetSelector) dom.presetSelector.value = data[0].id;
+                        handlePresetSelectorChange(dom.presetSelector); // Load its content and update UI
+                        hideModal();
+                    } else {
+                        errorP.textContent = "Failed to create preset. No data returned.";
+                        errorP.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error("Exception creating preset:", e);
+                    errorP.textContent = "An unexpected error occurred.";
+                    errorP.classList.remove('hidden');
+                }
+            }
+        }
     ]);
-    // alert("Add New Preset clicked! (Functionality to be implemented)");
+    // Focus the input field when modal opens
+    setTimeout(() => {
+        const nameInput = document.getElementById('new-preset-name-input');
+        if (nameInput) nameInput.focus();
+    }, 100); 
 }
 
 function handleEditPreset() {
@@ -246,21 +320,99 @@ function handleEditPreset() {
         showModal("Feature Unavailable", "Cannot edit presets while offline.");
         return;
     }
-    const selectedPresetId = dom.presetSelector.value;
-    if (selectedPresetId === DEFAULT_PRESET_ID) {
-        showModal("Cannot Edit Default", "The default 'Grocery List' cannot be edited directly through this interface.");
+    const presetIdToEdit = dom.presetSelector.value;
+    const selectedOption = dom.presetSelector.options[dom.presetSelector.selectedIndex];
+    const currentName = selectedOption ? selectedOption.textContent : "";
+
+    if (!presetIdToEdit || presetIdToEdit === DEFAULT_PRESET_ID) {
+        showModal("Cannot Edit", "The default preset cannot be edited, or no user preset is selected.");
         return;
     }
-    if (selectedPresetId && selectedPresetId !== DEFAULT_PRESET_ID) {
-        const presetName = dom.presetSelector.options[dom.presetSelector.selectedIndex].text;
-        showModal("Edit Preset", `<p>Editing preset: ${presetName} (ID: ${selectedPresetId}). Form will be here.</p>`, [
-            {text: "Cancel"},
-            {text: "Save Changes (Not Implemented)", class: "bg-accent text-white", onClick: () => alert("Save changes not implemented")}
-        ]);
-        // alert(`Edit Preset clicked for: ${presetName} (ID: ${selectedPresetId}) (Functionality to be implemented)`);
-    } else {
-        alert("Please select a user-defined preset to edit.");
-    }
+
+    const modalContentHTML = `
+        <div>
+            <label for="edit-preset-name-input" class="block text-sm font-medium text-text-primary mb-1">New Preset Name:</label>
+            <input type="text" id="edit-preset-name-input" value="${currentName}" 
+                   class="w-full px-3 py-2 bg-primary-bg border border-gray-600 rounded-md text-text-primary focus:ring-accent focus:border-accent">
+            <p id="edit-preset-error" class="text-red-500 text-sm mt-1 hidden"></p>
+        </div>
+    `;
+
+    showModal(`Edit Preset: ${currentName}`, modalContentHTML, [
+        { text: "Cancel", class: "bg-gray-700 hover:bg-gray-600" },
+        {
+            text: "Save Changes", 
+            class: "bg-accent hover:bg-accent-darker text-white", 
+            hideOnClick: false,
+            onClick: async () => {
+                const nameInput = document.getElementById('edit-preset-name-input');
+                const errorP = document.getElementById('edit-preset-error');
+                const updatedName = nameInput.value.trim();
+
+                if (!updatedName) {
+                    errorP.textContent = "Preset name cannot be empty.";
+                    errorP.classList.remove('hidden');
+                    nameInput.focus();
+                    return;
+                }
+                if (updatedName === currentName) {
+                    hideModal(); // No changes made
+                    return;
+                }
+                errorP.classList.add('hidden');
+
+                try {
+                    // Check if another preset with the same name already exists for this user
+                    const existingCheck = userPresetsCache.find(p => p.id !== presetIdToEdit && p.name.toLowerCase() === updatedName.toLowerCase());
+                    if (existingCheck || (window.defaultGroceryData && window.defaultGroceryData.name.toLowerCase() === updatedName.toLowerCase() && DEFAULT_PRESET_ID !== presetIdToEdit )) {
+                        errorP.textContent = "Another preset with this name already exists.";
+                        errorP.classList.remove('hidden');
+                        nameInput.focus();
+                        return;
+                    }
+
+                    const { data, error } = await window.supabaseClient
+                        .from('presets')
+                        .update({ name: updatedName })
+                        .eq('id', presetIdToEdit)
+                        .eq('telegram_user_id', MOCK_TELEGRAM_USER_ID) // Ensure user owns the preset
+                        .select();
+
+                    if (error) {
+                        console.error("Error updating preset:", error);
+                        errorP.textContent = `Failed to update: ${error.message}`;
+                        errorP.classList.remove('hidden');
+                        return;
+                    }
+
+                    if (data && data.length > 0) {
+                        console.log("Preset updated successfully:", data[0]);
+                        // Update local cache
+                        const cacheIndex = userPresetsCache.findIndex(p => p.id === presetIdToEdit);
+                        if (cacheIndex !== -1) {
+                            userPresetsCache[cacheIndex] = data[0];
+                        }
+                        await populatePresetSelector();
+                        if(dom.presetSelector) dom.presetSelector.value = data[0].id; // Re-select the edited preset
+                        handlePresetSelectorChange(dom.presetSelector);
+                        hideModal();
+                    } else {
+                        // This might happen if the preset was deleted by another session, or RLS prevented update/select
+                        errorP.textContent = "Failed to update preset. It might no longer exist or you may not have permission.";
+                        errorP.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error("Exception updating preset:", e);
+                    errorP.textContent = "An unexpected error occurred during update.";
+                    errorP.classList.remove('hidden');
+                }
+            }
+        }
+    ]);
+    setTimeout(() => {
+        const nameInput = document.getElementById('edit-preset-name-input');
+        if (nameInput) { nameInput.focus(); nameInput.select(); }
+    }, 100);
 }
 
 function handleDeletePreset() {
@@ -268,26 +420,50 @@ function handleDeletePreset() {
         showModal("Feature Unavailable", "Cannot delete presets while offline.");
         return;
     }
-    const selectedPresetId = dom.presetSelector.value;
-    const presetName = dom.presetSelector.options[dom.presetSelector.selectedIndex].text;
+    const presetIdToDelete = dom.presetSelector.value;
+    const selectedOption = dom.presetSelector.options[dom.presetSelector.selectedIndex];
+    const presetNameToDelete = selectedOption ? selectedOption.textContent : "Unknown Preset";
 
-    if (selectedPresetId && selectedPresetId !== DEFAULT_PRESET_ID) {
-        showModal("Confirm Delete", `<p>Are you sure you want to delete the preset "${presetName}"?</p><p>This action cannot be undone.</p>`, [
-            { text: "Cancel" },
-            { 
-                text: "Delete (Not Implemented)", 
-                class: "bg-button-remove hover:bg-red-700 text-white", 
-                onClick: () => {
-                    alert(`Confirmed delete for: ${presetName} (ID: ${selectedPresetId}). Backend call not implemented.`);
-                    // TODO: After actual deletion, remove from selector, load default/next preset.
+    if (!presetIdToDelete || presetIdToDelete === DEFAULT_PRESET_ID) {
+        showModal("Cannot Delete", "The default preset cannot be deleted, or no user preset is selected.");
+        return;
+    }
+
+    showModal("Confirm Deletion", `<p>Are you sure you want to delete the preset "<strong>${presetNameToDelete}</strong>"?</p><p>This action cannot be undone.</p>`, [
+        { text: "Cancel", class: "bg-gray-700 hover:bg-gray-600" },
+        {
+            text: "Delete Preset",
+            class: "bg-button-remove hover:bg-red-700 text-white",
+            onClick: async () => {
+                try {
+                    const { error } = await window.supabaseClient
+                        .from('presets')
+                        .delete()
+                        .eq('id', presetIdToDelete)
+                        .eq('telegram_user_id', MOCK_TELEGRAM_USER_ID); // Ensure user owns the preset
+
+                    if (error) {
+                        console.error("Error deleting preset:", error);
+                        showModal("Error Deleting Preset", `Could not delete preset: ${error.message}`);
+                        return;
+                    }
+
+                    console.log(`Preset '${presetNameToDelete}' (ID: ${presetIdToDelete}) deleted successfully.`);
+                    // Remove from local cache
+                    userPresetsCache = userPresetsCache.filter(p => p.id !== presetIdToDelete);
+                    await populatePresetSelector();
+                    // Select the default preset after deletion
+                    if(dom.presetSelector) dom.presetSelector.value = DEFAULT_PRESET_ID;
+                    handlePresetSelectorChange(dom.presetSelector);
+                    hideModal(); // Close the confirmation modal
+
+                } catch (e) {
+                    console.error("Exception deleting preset:", e);
+                    showModal("Error", "An unexpected error occurred while deleting the preset.");
                 }
             }
-        ]);
-    } else if (selectedPresetId === DEFAULT_PRESET_ID) {
-         showModal("Cannot Delete Default", "The default 'Grocery List' cannot be deleted.");
-    } else {
-        alert("Please select a user-defined preset to delete.");
-    }
+        }
+    ]);
 }
 
 function updateUserPresetEditUI(selectedPresetId) {
@@ -342,8 +518,60 @@ function handlePresetSelectorChange(selectElement) {
     updateUserPresetEditUI(presetId);
 }
 
+// --- sendList Function (for Telegram integration) ---
+function sendList() {
+    if (Object.keys(selectedItems).length === 0) {
+        showModal("Empty List", "Please select some items before sending.");
+        return;
+    }
+
+    let formattedList = `${currentActivePresetName}:
+`;
+    for (const categoryName in selectedItems) {
+        if (Object.keys(selectedItems[categoryName].items).length > 0) {
+            formattedList += `
+${categoryName}:
+`;
+            for (const itemName in selectedItems[categoryName].items) {
+                const item = selectedItems[categoryName].items[itemName];
+                formattedList += `- ${item.name} ${item.quantity}${item.unit || ''}
+`;
+            }
+        }
+    }
+
+    console.log("Formatted list for Telegram:", formattedList);
+
+    if (window.Telegram && window.Telegram.WebApp) {
+        try {
+            window.Telegram.WebApp.switchInlineQuery(formattedList.trim());
+        } catch (e) {
+            console.error("Error calling Telegram.WebApp.switchInlineQuery:", e);
+            showModal("Telegram Error", "Could not switch to Telegram inline query. Error: " + e.message);
+        }
+    } else {
+        console.warn("Telegram WebApp SDK not available. Simulating send with an alert.");
+        showModal("Share List (Simulated)", `<p>If this were in Telegram, you'd now be choosing a chat to share this list:</p><pre class="mt-2 p-2 bg-primary-bg rounded text-sm whitespace-pre-wrap">${formattedList.trim()}</pre>`);
+    }
+}
+
+// Initial setup when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed. Initializing app.");
+
+    // Re-cache modal DOM elements here to be certain they are available
+    dom.genericModal = document.getElementById('generic-modal');
+    dom.genericModalPanel = document.getElementById('generic-modal-panel');
+    dom.genericModalTitle = document.getElementById('generic-modal-title');
+    dom.genericModalCloseBtn = document.getElementById('generic-modal-close-btn');
+    dom.genericModalContent = document.getElementById('generic-modal-content');
+    dom.genericModalFooter = document.getElementById('generic-modal-footer');
+
+    if (!dom.genericModal || !dom.genericModalPanel) {
+        console.error("CRITICAL: Modal elements still not found after DOMContentLoaded!");
+    } else {
+        console.log("Modal elements successfully cached within DOMContentLoaded.");
+    }
 
     // Initialize Telegram Web App
     if (window.Telegram && window.Telegram.WebApp) {

@@ -24,6 +24,7 @@ dist-ssr
 *.sw?
 
 DESIGN_DOCUMENT.md
+SECURITY_DESIGN_DOCUMENT.md
 docs/*
 
 /style.css
