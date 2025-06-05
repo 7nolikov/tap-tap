@@ -8,18 +8,23 @@ window.SUPABASE_ANON_KEY =
 // window.SUPABASE_URL = 'https://xyzabcdefghijklmnop.supabase.co';
 // window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxODAwMDAwMDAwfQ.abcdefghijklmnopqrstuvwxyz1234567890';
 
-let supabase = null;
+let supabaseClient = null; // Renamed from 'supabase' to avoid confusion, explicitly for the instance.
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
     try {
-        // Correctly use the global supabase object from the CDN
-        const { createClient } = supabase;
-        const supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase client initialized.');
-        // Make supabaseInstance globally accessible 
-        window.supabaseClient = supabaseInstance; 
+        // Check if the global supabase object from CDN is available
+        if (typeof supabase !== 'undefined' && supabase !== null && typeof supabase.createClient === 'function') {
+            const { createClient } = supabase; // supabase here refers to window.supabase from CDN
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized.');
+            window.supabaseClient = supabaseClient; // Expose the initialized client
+        } else {
+            console.error("Supabase CDN object (window.supabase) not available or createClient is not a function. Supabase client not initialized.");
+            window.supabaseClient = null; // Ensure it's null if not initialized
+        }
     } catch (e) {
         console.error("Error initializing Supabase client:", e);
+        window.supabaseClient = null; // Ensure it's null on error
         alert("Failed to initialize Supabase. Backend features might not work.");
     }
 } else {

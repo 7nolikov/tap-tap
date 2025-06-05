@@ -39,10 +39,4 @@ body {
 .htmx-indicator {
     /* Add any specific styling for loading indicators if needed */
     /* e.g., @apply text-accent; */
-}
-
-/* Ensure the custom color classes from the config are usable if needed as direct CSS classes */
-.bg-primary-bg { @apply bg-primary-bg; }
-.bg-container-bg { @apply bg-container-bg; }
-.text-text-primary { @apply text-text-primary; }
-/* etc. for other custom colors if you plan to use them as plain CSS classes */ 
+} 

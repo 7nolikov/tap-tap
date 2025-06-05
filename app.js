@@ -212,13 +212,9 @@ async function populatePresetSelector() {
         // User presets cache remains empty.
         if (dom.categoriesPlaceholder) {
             htmx.removeClass(dom.categoriesPlaceholder, 'hidden');
-            dom.categoriesPlaceholder.innerHTML = 'Supabase not connected. <br>Only local "Grocery List" is available. <br>Online features are disabled.';
+            dom.categoriesPlaceholder.innerHTML = 'Supabase not connected. <br>Only local "Grocery List" is available. <br>Online features (saving, loading other presets) are disabled.';
         }
-         showModal(
-            "Offline Mode", 
-            "<p>Could not connect to Supabase. You can still use the default 'Grocery List'.</p><p>Saving new lists or accessing your other cloud-saved lists is currently unavailable.</p>",
-            [{ text: "OK", class: "bg-accent hover:bg-accent-darker text-white"}]
-        );
+        console.info("Supabase not connected. Displaying message in categories placeholder instead of modal.");
     }
 
     // Set initial selection and trigger content load for the first preset in the list
