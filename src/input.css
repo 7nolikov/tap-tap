@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Apply background and text colors from Tailwind config by default */
+    /* These will be applied if not overridden by more specific utility classes */
+    @apply bg-primary-bg text-text-primary;
+}
+
+.category-border {
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 0.5rem; /* Corresponds to Tailwind's rounded-lg */
+    /* Example: default border color, can be overridden with utilities like border-yellow, border-blue etc. */
+    /* @apply border-gray-500; */ 
+}
+
+/* Custom styling for the select to make it look like a title */
+#preset-selector {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none; /* Remove default arrow on some systems if not covered by Tailwind's appearance-none */
+    /* padding-right is handled by Tailwind utilities on the element or its parent now (pr-10 on parent example) */
+}
+
+.non-selectable {
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
+}
+
+/* Ensure htmx-indicator styling is compatible or explicitly styled */
+.htmx-indicator {
+    /* Add any specific styling for loading indicators if needed */
+    /* e.g., @apply text-accent; */
+}
+
+/* Ensure the custom color classes from the config are usable if needed as direct CSS classes */
+.bg-primary-bg { @apply bg-primary-bg; }
+.bg-container-bg { @apply bg-container-bg; }
+.text-text-primary { @apply text-text-primary; }
+/* etc. for other custom colors if you plan to use them as plain CSS classes */ 

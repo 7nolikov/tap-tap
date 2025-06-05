@@ -12,10 +12,12 @@ let supabase = null;
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
     try {
-        supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Correctly use the global supabase object from the CDN
+        const { createClient } = supabase;
+        const supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase client initialized.');
-        // Make supabase globally accessible if needed, or export it via a module system if you adopt one later
-        window.supabase = supabase;
+        // Make supabaseInstance globally accessible 
+        window.supabaseClient = supabaseInstance; 
     } catch (e) {
         console.error("Error initializing Supabase client:", e);
         alert("Failed to initialize Supabase. Backend features might not work.");
