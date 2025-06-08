@@ -520,7 +520,18 @@ function handlePresetSelectorChange(selectElement) {
 
 // --- sendList Function (for Telegram integration) ---
 function sendList() {
-    if (Object.keys(selectedItems).length === 0) {
+    // Safety check to prevent errors if selectedItems is not an object
+    if (!selectedItems || typeof selectedItems !== 'object') {
+        console.error("Cannot send list: selectedItems is not a valid object.", selectedItems);
+        // Optionally, show a user-friendly error message
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.showAlert("An error occurred. Could not prepare the list to send.");
+        }
+        return;
+    }
+
+    const itemCount = Object.keys(selectedItems).length;
+    if (itemCount === 0) {
         showModal("Empty List", "Please select some items before sending.");
         return;
     }
@@ -785,9 +796,11 @@ function updateSendButtonVisibilityAndPreview() {
         dom.selectedItemsPreview.textContent = '';
     }
 }
-function resetSelectedItemsAndUI() { /* ... */ 
-    selectedItems = {};
+function resetSelectedItemsAndUI() {
+    selectedItems = {}; // Ensure reset to an empty object
     updateSendButtonVisibilityAndPreview();
+    // When a new preset is loaded, the category container is re-rendered,
+    // so we don't need to manually clear out the UI state of each item.
 }
 
 console.log("app.js loaded. Preset management reverted to dropdown with modal controls.");
