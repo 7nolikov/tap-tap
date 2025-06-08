@@ -133,25 +133,41 @@ document.body.addEventListener('loadPresetContent', function(event) {
 });
 
 async function fetchUserPresets() {
-    console.log("Fetching user presets...");
-    if (!supabase) {
-        console.warn("Supabase not initialized. Using mock user presets.");
-        return Promise.resolve([
-            { id: 'user_preset_123', name: 'My Weekly Shop' },
-            { id: 'user_preset_456', name: 'Weekend BBQ Plan' }
-        ]);
+  console.log("Fetching user presets...");
+
+  // Ensure Telegram WebApp is ready and initData is available
+  if (
+    !window.Telegram ||
+    !window.Telegram.WebApp ||
+    !window.Telegram.WebApp.initData
+  ) {
+    console.error("Telegram Web App data is not available yet.");
+    // Return empty array or default data to prevent app from crashing
+    return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("tg-update", {
+      headers: {
+        // This Authorization header is critical and must match the Edge Function's expectation
+        Authorization: `TMA ${window.Telegram.WebApp.initData}`,
+      },
+      // For a GET request, body is not needed, but for POST/PUT it would be here
+      // body: {}
+    });
+
+    if (error) {
+      // This will throw the "FunctionsHttpError" seen in your logs
+      throw error;
     }
-    try {
-        // const { data, error } = await supabase.from('presets').select('id, name').eq('telegram_user_id', 'YOUR_TELEGRAM_USER_ID');
-        // if (error) throw error; return data;
-        return [
-            { id: 'user_preset_123', name: 'My Weekly Shop' },
-            { id: 'user_preset_456', name: 'Weekend BBQ Plan' }
-        ]; // Mock
-    } catch (error) {
-        console.error("Error fetching user presets:", error);
-        return [];
-    }
+
+    console.log("Successfully fetched user presets:", data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching user presets:", error);
+    // Return an empty array on failure so the app doesn't crash
+    return [];
+  }
 }
 
 async function populatePresetSelector() {
