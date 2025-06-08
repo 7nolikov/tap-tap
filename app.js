@@ -153,11 +153,9 @@ async function fetchUserPresets() {
         return []; 
     }
     try {
-        console.log(`Fetching presets for Telegram User ID: ${MOCK_TELEGRAM_USER_ID}`);
-        const { data, error } = await window.supabaseClient
-            .from('presets')
-            .select('id, name')
-            .eq('telegram_user_id', MOCK_TELEGRAM_USER_ID);
+        const { data, error } = await window.supabaseClient.functions.invoke('tg-update', {
+            method: 'GET',
+        });
 
         if (error) {
             console.error("Error fetching user presets:", error);
@@ -165,7 +163,7 @@ async function fetchUserPresets() {
             return [];
         }
         
-        console.log("Fetched user presets from Supabase:", data);
+        console.log("Fetched user presets from Supabase Edge Function:", data);
         return data || [];
     } catch (error) {
         console.error("Exception during fetchUserPresets:", error);
@@ -249,70 +247,58 @@ function handleAddPreset() {
 
     showModal("Create New Preset", modalContentHTML, [
         { text: "Cancel", class: "bg-gray-700 hover:bg-gray-600" },
-        {
-            text: "Save Preset", 
-            class: "bg-accent hover:bg-accent-darker text-white", 
-            hideOnClick: false, // Keep modal open for potential error messages
-            onClick: async () => {
-                const nameInput = document.getElementById('new-preset-name-input');
-                const errorP = document.getElementById('create-preset-error');
-                const newName = nameInput.value.trim();
-
-                if (!newName) {
-                    errorP.textContent = "Preset name cannot be empty.";
-                    errorP.classList.remove('hidden');
-                    nameInput.focus();
-                    return;
-                }
-                errorP.classList.add('hidden');
-
-                try {
-                    // Check if preset with the same name already exists for this user
-                    const existingCheck = userPresetsCache.find(p => p.name.toLowerCase() === newName.toLowerCase());
-                    if (existingCheck || (window.defaultGroceryData && window.defaultGroceryData.name.toLowerCase() === newName.toLowerCase())) {
-                        errorP.textContent = "A preset with this name already exists.";
-                        errorP.classList.remove('hidden');
-                        nameInput.focus();
-                        return;
-                    }
-
-                    const { data, error } = await window.supabaseClient
-                        .from('presets')
-                        .insert([{ name: newName, telegram_user_id: MOCK_TELEGRAM_USER_ID }])
-                        .select(); // .select() will return the inserted rows
-
-                    if (error) {
-                        console.error("Error creating preset:", error);
-                        errorP.textContent = `Failed to save: ${error.message}`;
-                        errorP.classList.remove('hidden');
-                        return;
-                    }
-
-                    if (data && data.length > 0) {
-                        console.log("Preset created successfully:", data[0]);
-                        userPresetsCache.push(data[0]); // Add to local cache
-                        await populatePresetSelector(); // Repopulate and re-render selector
-                        // Select the new preset
-                        if(dom.presetSelector) dom.presetSelector.value = data[0].id;
-                        handlePresetSelectorChange(dom.presetSelector); // Load its content and update UI
-                        hideModal();
-                    } else {
-                        errorP.textContent = "Failed to create preset. No data returned.";
-                        errorP.classList.remove('hidden');
-                    }
-                } catch (e) {
-                    console.error("Exception creating preset:", e);
-                    errorP.textContent = "An unexpected error occurred.";
-                    errorP.classList.remove('hidden');
-                }
-            }
+        { 
+            text: "Save", 
+            class: "bg-accent hover:bg-accent-darker text-white",
+            onClick: handleSavePreset,
+            hideOnClick: false // Keep modal open to show loading/error
         }
     ]);
-    // Focus the input field when modal opens
-    setTimeout(() => {
-        const nameInput = document.getElementById('new-preset-name-input');
-        if (nameInput) nameInput.focus();
-    }, 100); 
+}
+
+async function handleSavePreset() {
+    const input = document.getElementById('new-preset-name-input');
+    const errorP = document.getElementById('create-preset-error');
+    const newName = input ? input.value.trim() : '';
+
+    if (!newName) {
+        if(errorP) {
+            errorP.textContent = 'Preset name cannot be empty.';
+            htmx.removeClass(errorP, 'hidden');
+        }
+        return;
+    }
+    
+    if(errorP) htmx.addClass(errorP, 'hidden');
+    console.log(`Attempting to save new preset with name: "${newName}"`);
+    
+    try {
+        const { data: newPreset, error } = await window.supabaseClient.functions.invoke('tg-update', {
+            method: 'POST',
+            body: JSON.stringify({ name: newName }),
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log('Successfully created new preset:', newPreset);
+        hideModal();
+        await populatePresetSelector(); // Refresh the list
+        
+        // Find and select the new preset
+        if (dom.presetSelector && newPreset.id) {
+            dom.presetSelector.value = newPreset.id;
+            handlePresetSelectorChange(dom.presetSelector); // Trigger load
+        }
+        
+    } catch (error) {
+        console.error("Error creating preset:", error);
+        if(errorP) {
+            errorP.textContent = `Error: ${error.message}`;
+            htmx.removeClass(errorP, 'hidden');
+        }
+    }
 }
 
 function handleEditPreset() {
@@ -520,10 +506,9 @@ function handlePresetSelectorChange(selectElement) {
 
 // --- sendList Function (for Telegram integration) ---
 function sendList() {
-    // Safety check to prevent errors if selectedItems is not an object
+    // Safety check to prevent errors if selectedItems is null, undefined, or not an object
     if (!selectedItems || typeof selectedItems !== 'object') {
         console.error("Cannot send list: selectedItems is not a valid object.", selectedItems);
-        // Optionally, show a user-friendly error message
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.showAlert("An error occurred. Could not prepare the list to send.");
         }
