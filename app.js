@@ -683,174 +683,106 @@ function renderPresetFromLocalData(presetData, containerId) { /* ... full implem
     if (dom.categoriesPlaceholder) htmx.addClass(dom.categoriesPlaceholder, 'hidden');
     console.log("Local preset data rendered.");
 }
-function triggerItemAnimation(itemElementId, animationType = 'flash') { 
-    const itemDiv = document.getElementById(itemElementId);
-    if (!itemDiv) return;
+function triggerItemAnimation(itemElementId, animationType = 'flash') {
+    const itemElement = document.getElementById(itemElementId);
+    if (!itemElement) return;
+
     if (animationType === 'flash') {
-        itemDiv.classList.remove('bg-accent/20'); 
-        itemDiv.classList.add('bg-accent/30'); 
-        setTimeout(() => {
-            itemDiv.classList.remove('bg-accent/30');
-            const item = selectedItems[Object.keys(selectedItems).find(key => selectedItems[key].originalElementId === itemElementId)];
-            if (item && item.count > 0) { 
-                 itemDiv.classList.add('bg-accent/20', 'border', 'border-accent');
-            }
-        }, 150);
-    } else if (animationType === 'fadeOut') {
-        itemDiv.classList.add('opacity-0', 'scale-95');
+        itemElement.classList.add('animate-flash');
+        setTimeout(() => itemElement.classList.remove('animate-flash'), 300);
+    } else if (animationType === 'remove') {
+        itemElement.classList.add('animate-remove');
     }
 }
-function incrementOrSelectItem(itemId, itemName, unit, itemElementId, itemIncrementStep = 1) { /* ... */ 
-    const isNewItem = !selectedItems[itemId];
-    const step = parseFloat(itemIncrementStep) || 1;
+function incrementOrSelectItem(itemId, itemName, unit, itemElementId, itemIncrementStep = 1) {
+    const step = Number(itemIncrementStep) || 1;
     if (!selectedItems[itemId]) {
-        selectedItems[itemId] = { name: itemName, count: step, unit: unit, originalElementId: itemElementId, incrementStep: step };
-    } else {
-        selectedItems[itemId].count = (parseFloat(selectedItems[itemId].count) || 0) + step;
-        if (step % 1 !== 0 || (selectedItems[itemId].count % 1 !== 0 && String(selectedItems[itemId].count).includes('.'))) {
-            const stepDecimals = (String(step).split('.')[1] || '').length;
-            const countDecimals = (String(selectedItems[itemId].count).split('.')[1] || '').length;
-            const precision = Math.max(stepDecimals, countDecimals, 1); 
-            selectedItems[itemId].count = parseFloat(selectedItems[itemId].count.toFixed(precision));
-        } else {
-             selectedItems[itemId].count = parseFloat(selectedItems[itemId].count.toFixed(0)); 
-        }
+        selectedItems[itemId] = { 
+            name: itemName, 
+            quantity: 0,
+            unit: unit,
+            incrementStep: step
+        };
     }
-    updateItemUIDisplay(itemId, itemName, unit, itemElementId, isNewItem);
+    selectedItems[itemId].quantity += step;
+    const { quantity } = selectedItems[itemId];
+    const precision = Math.max((String(step).split('.')[1] || '').length, (String(quantity).split('.')[1] || '').length);
+    selectedItems[itemId].quantity = parseFloat(quantity.toFixed(precision));
+    
+    updateItemUIDisplay(itemId, itemName, unit, itemElementId);
     updateSendButtonVisibilityAndPreview();
     triggerItemAnimation(itemElementId, 'flash');
 }
-function decrementItem(itemId, itemName, unit, itemElementId, itemIncrementStep = 1) { /* ... */ 
-    if (event && typeof event.stopPropagation === 'function') event.stopPropagation(); 
+function decrementItem(itemId, itemName, unit, itemElementId) {
+    if (event) event.stopPropagation();
     if (selectedItems[itemId]) {
-        const step = parseFloat(selectedItems[itemId].incrementStep) || parseFloat(itemIncrementStep) || 1;
-        selectedItems[itemId].count = (parseFloat(selectedItems[itemId].count) || 0) - step;
-        if (step % 1 !== 0 || (selectedItems[itemId].count % 1 !== 0 && String(selectedItems[itemId].count).includes('.'))) {
-            const stepDecimals = (String(step).split('.')[1] || '').length;
-            const countDecimals = (String(selectedItems[itemId].count).split('.')[1] || '').length;
-            const precision = Math.max(stepDecimals, countDecimals, 1);
-            selectedItems[itemId].count = parseFloat(selectedItems[itemId].count.toFixed(precision));
-        } else {
-            selectedItems[itemId].count = parseFloat(selectedItems[itemId].count.toFixed(0));
-        }
-        if (selectedItems[itemId].count <= 0) {
+        const step = Number(selectedItems[itemId].incrementStep) || 1;
+        selectedItems[itemId].quantity -= step;
+        const { quantity } = selectedItems[itemId];
+
+        if (quantity <= 0) {
             delete selectedItems[itemId];
-            const itemDiv = document.getElementById(itemElementId);
-            if (itemDiv) {
-                triggerItemAnimation(itemElementId, 'fadeOut');
-                setTimeout(() => {
-                    itemDiv.className = 'flex items-center justify-between p-3 bg-item-bg rounded-md hover:bg-gray-700/50 cursor-pointer transition-all duration-150 ease-in-out';
-                    itemDiv.style.opacity = ''; 
-                    itemDiv.style.transform = '';
-                    const itemIcon = itemName.split(' ')[0]; 
-                    const actualItemName = itemName.substring(itemIcon.length).trim();
-                    itemDiv.innerHTML = `
-                        <div class="flex items-center flex-grow min-w-0">
-                            <span class="text-xl mr-3 non-selectable">${itemIcon}</span> 
-                            <span class="text-text-primary truncate non-selectable">${actualItemName}</span>
-                        </div>
-                        <div class="flex items-center flex-shrink-0 ml-2">
-                            <span class="text-text-secondary mr-2 whitespace-nowrap non-selectable">0 ${unit}</span>
-                        </div>
-                    `;
-                    const originalIncrementStep = parseFloat(itemIncrementStep) || 1; 
-                    itemDiv.onclick = () => incrementOrSelectItem(itemId, itemName, unit, itemElementId, originalIncrementStep);
-                }, 150); 
-            }
+            triggerItemAnimation(itemElementId, 'remove');
+            setTimeout(() => {
+                updateItemUIDisplay(itemId, itemName, unit, itemElementId);
+                updateSendButtonVisibilityAndPreview();
+            }, 300);
         } else {
-            updateItemUIDisplay(itemId, itemName, unit, itemElementId, false);
+            const precision = Math.max((String(step).split('.')[1] || '').length, (String(quantity).split('.')[1] || '').length);
+            selectedItems[itemId].quantity = parseFloat(quantity.toFixed(precision));
+            updateItemUIDisplay(itemId, itemName, unit, itemElementId);
+            updateSendButtonVisibilityAndPreview();
         }
     }
-    updateSendButtonVisibilityAndPreview();
 }
-function updateItemUIDisplay(itemId, itemName, unit, itemElementId, isNewlyAdded = false) { /* ... */ 
-    const itemDiv = document.getElementById(itemElementId);
-    if (!itemDiv) {
-        console.error(`Item element with ID ${itemElementId} not found for UI update.`);
-        return;
-    }
+function updateItemUIDisplay(itemId, itemName, unit, itemElementId) {
+    const itemElement = document.getElementById(itemElementId);
+    if (!itemElement) return;
+
+    itemElement.classList.remove('animate-flash', 'animate-remove');
     const itemData = selectedItems[itemId];
-    const itemIcon = itemName.split(' ')[0]; 
-    const actualItemName = itemName.substring(itemIcon.length).trim();
-    let incrementStep = 1;
-    if (itemData && itemData.incrementStep) {
-        incrementStep = itemData.incrementStep;
-    } else if (window.defaultGroceryData) {
-        const flatItems = window.defaultGroceryData.categories.flatMap(c => c.items);
-        const defaultItem = flatItems.find(i => i.id === itemId); 
-        if (defaultItem && defaultItem.incrementStep) {
-            incrementStep = defaultItem.incrementStep;
-        }
-    }
-    incrementStep = parseFloat(incrementStep) || 1;
-    itemDiv.className = 'flex items-center justify-between p-3 rounded-md cursor-pointer transition-all duration-150 ease-in-out'; 
-    itemDiv.style.opacity = ''; 
-    itemDiv.onclick = () => incrementOrSelectItem(itemId, itemName, unit, itemElementId, incrementStep);
-    if (itemData && itemData.count > 0) {
-        itemDiv.classList.add('bg-accent/20', 'border', 'border-accent');
-        itemDiv.classList.remove('bg-item-bg', 'hover:bg-gray-700/50');
-        let displayCount = itemData.count;
-        if (incrementStep % 1 !== 0 || (typeof displayCount === 'number' && displayCount % 1 !== 0)) {
-             const stepDecimals = (String(incrementStep).split('.')[1] || '').length;
-             const countDecimals = (String(displayCount).split('.')[1] || '').length;
-             displayCount = Number(displayCount).toFixed(Math.max(stepDecimals, countDecimals,1));
-        } else {
-            displayCount = Number(displayCount).toFixed(0);
-        }
-        itemDiv.innerHTML = `
+    const originalIncrementStep = itemElement.dataset.incrementStep || 1;
+    const [itemIcon, ...nameParts] = itemName.split(' ');
+    const actualItemName = nameParts.join(' ');
+
+    if (itemData && itemData.quantity > 0) {
+        itemElement.className = 'flex items-center justify-between p-3 bg-accent/20 border border-accent rounded-md transition-all duration-150 ease-in-out';
+        itemElement.onclick = () => incrementOrSelectItem(itemId, itemName, unit, itemElementId, originalIncrementStep);
+        itemElement.innerHTML = `
             <div class="flex items-center flex-grow min-w-0">
-                <span class="text-xl mr-3 non-selectable">${itemIcon}</span> 
+                <span class="text-xl mr-3 non-selectable">${itemIcon}</span>
                 <span class="text-text-primary truncate non-selectable">${actualItemName}</span>
             </div>
-            <div class="flex items-center flex-shrink-0 ml-2">
-                <span id="${itemId}-qty" class="text-accent font-semibold mr-2 whitespace-nowrap non-selectable">${displayCount} ${unit}</span>
-                <button class="p-1 rounded-full bg-accent text-white w-7 h-7 flex items-center justify-center hover:bg-accent-darker flex-shrink-0" 
-                        onclick="event.stopPropagation(); decrementItem('${itemId}', '${itemName}', '${unit}', '${itemElementId}', ${incrementStep})">-</button>
-            </div>
-        `;
+            <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
+                <button onclick="decrementItem('${itemId}', '${itemName}', '${unit}', '${itemElementId}')" class="w-8 h-8 flex items-center justify-center text-lg bg-accent text-white rounded-full transition-colors hover:bg-accent-darker focus:outline-none">-</button>
+                <span class="text-text-primary w-16 text-center text-lg font-semibold non-selectable">${itemData.quantity} ${unit}</span>
+            </div>`;
     } else {
-        itemDiv.classList.add('bg-item-bg', 'hover:bg-gray-700/50');
-        itemDiv.classList.remove('bg-accent/20', 'border', 'border-accent');
-        itemDiv.innerHTML = `
+        itemElement.className = 'flex items-center justify-between p-3 bg-item-bg rounded-md hover:bg-gray-700/50 cursor-pointer transition-all duration-150 ease-in-out';
+        itemElement.onclick = () => incrementOrSelectItem(itemId, itemName, unit, itemElementId, originalIncrementStep);
+        itemElement.innerHTML = `
             <div class="flex items-center flex-grow min-w-0">
-                <span class="text-xl mr-3 non-selectable">${itemIcon}</span> 
+                <span class="text-xl mr-3 non-selectable">${itemIcon}</span>
                 <span class="text-text-primary truncate non-selectable">${actualItemName}</span>
             </div>
-            <div class="flex items-center flex-shrink-0 ml-2">
-                <span class="text-text-secondary mr-2 whitespace-nowrap non-selectable">0 ${unit}</span>
-            </div>
-        `;
-    }
-    if (isNewlyAdded && itemData && itemData.count > 0) {
-        itemDiv.classList.add('bg-accent/20', 'border', 'border-accent');
-        itemDiv.classList.remove('bg-item-bg', 'hover:bg-gray-700/50');
+            <div class="flex items-center flex-shrink-0 ml-2"></div>`;
     }
 }
-function updateSendButtonVisibilityAndPreview() { /* ... */ 
+function updateSendButtonVisibilityAndPreview() {
     const itemCount = Object.keys(selectedItems).length;
-    if (dom.sendButtonContainer && dom.sendButton && dom.selectedItemsPreview) {
-        if (itemCount > 0) {
-            dom.sendButtonContainer.classList.remove('hidden');
-            dom.sendButton.disabled = false;
-            let previewParts = [];
-            for (const id in selectedItems) {
-                let displayCount = selectedItems[id].count;
-                const step = selectedItems[id].incrementStep || 1;
-                 if (step % 1 !== 0 || (typeof displayCount === 'number' && displayCount % 1 !== 0)) {
-                    const stepDecimals = (String(step).split('.')[1] || '').length;
-                    const countDecimals = (String(displayCount).split('.')[1] || '').length;
-                    displayCount = Number(displayCount).toFixed(Math.max(stepDecimals, countDecimals,1));
-                } else {
-                    displayCount = Number(displayCount).toFixed(0);
-                }
-                previewParts.push(`${selectedItems[id].name.split(' ')[0]} ${displayCount}${selectedItems[id].unit.charAt(0)}`);
-            }
-            dom.selectedItemsPreview.textContent = "Selected: " + previewParts.join(', ');
-        } else {
-            dom.sendButtonContainer.classList.add('hidden');
-            dom.sendButton.disabled = true;
-            dom.selectedItemsPreview.textContent = "";
-        }
+    if (!dom.sendButtonContainer || !dom.sendButton || !dom.selectedItemsPreview) return;
+
+    if (itemCount > 0) {
+        dom.sendButtonContainer.classList.remove('hidden');
+        dom.sendButton.disabled = false;
+        const preview = Object.values(selectedItems)
+            .map(item => `${item.name.split(' ').slice(1).join(' ')}: ${item.quantity}`)
+            .join(', ');
+        dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
+    } else {
+        dom.sendButtonContainer.classList.add('hidden');
+        dom.sendButton.disabled = true;
+        dom.selectedItemsPreview.textContent = '';
     }
 }
 function resetSelectedItemsAndUI() { /* ... */ 
