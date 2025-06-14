@@ -226,28 +226,41 @@ function handleEdgeFunctionError(error, operation) {
     );
 }
 
-// Update fetchUserPresets to handle guest mode
+// --- Supabase Client Selection ---
+const supabaseClient = window.supabaseClient || window.supabase;
+if (!supabaseClient) {
+    console.warn("Supabase client (window.supabaseClient or window.supabase) not found. Backend features will be limited or disabled.");
+}
+
+// Update fetchUserPresets to handle guest mode and robust supabase client selection
 async function fetchUserPresets() {
     console.log("Fetching user presets...");
 
-    // If in guest mode, return default preset immediately
     if (isGuestMode) {
         console.log("Guest mode: returning default preset");
         return [{ id: "default_grocery_list_001", name: "Grocery List" }];
     }
 
-    // Wait for Telegram WebApp to be ready
     if (!isTelegramReady) {
         console.log("Waiting for Telegram WebApp to initialize...");
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        await new Promise(resolve => setTimeout(resolve, 1000));
         if (!initializeTelegramWebApp()) {
             console.warn("Telegram WebApp not available after waiting. Using default data.");
             return [{ id: "default_grocery_list_001", name: "Grocery List" }];
         }
     }
 
+    // Defensive supabase client check
+    if (!supabaseClient || !supabaseClient.functions || !supabaseClient.functions.invoke) {
+        handleEdgeFunctionError(
+            { message: "Supabase client or Edge Functions are not available. Check your initialization." },
+            'fetching presets'
+        );
+        return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+    }
+
     try {
-        const { data, error } = await supabase.functions.invoke('db-operations', {
+        const { data, error } = await supabaseClient.functions.invoke('db-operations', {
             method: 'POST',
             body: JSON.stringify({
                 operation: 'preset',
@@ -256,9 +269,7 @@ async function fetchUserPresets() {
             })
         });
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         console.log("Successfully fetched user presets:", data);
         return data || [];
@@ -268,7 +279,7 @@ async function fetchUserPresets() {
     }
 }
 
-// Update handleSavePreset to handle guest mode
+// Update handleSavePreset to use robust supabase client selection
 async function handleSavePreset() {
     if (isGuestMode) {
         showModal("Feature Unavailable", "Creating new presets is only available in Telegram.");
@@ -290,8 +301,17 @@ async function handleSavePreset() {
     if(errorP) htmx.addClass(errorP, 'hidden');
     console.log(`Attempting to save new preset with name: "${newName}"`);
     
+    // Defensive supabase client check
+    if (!supabaseClient || !supabaseClient.functions || !supabaseClient.functions.invoke) {
+        handleEdgeFunctionError(
+            { message: "Supabase client or Edge Functions are not available. Check your initialization." },
+            'creating preset'
+        );
+        return;
+    }
+
     try {
-        const { data: newPreset, error } = await supabase.functions.invoke('db-operations', {
+        const { data: newPreset, error } = await supabaseClient.functions.invoke('db-operations', {
             method: 'POST',
             body: JSON.stringify({
                 operation: 'preset',
@@ -301,9 +321,7 @@ async function handleSavePreset() {
             })
         });
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         console.log('Successfully created new preset:', newPreset);
         hideModal();
@@ -460,7 +478,7 @@ function handleEditPreset() {
                         return;
                     }
 
-                    const { data, error } = await window.supabaseClient
+                    const { data, error } = await supabaseClient
                         .from('presets')
                         .update({ name: updatedName })
                         .eq('id', presetIdToEdit)
@@ -525,7 +543,7 @@ function handleDeletePreset() {
             class: "bg-button-remove hover:bg-red-700 text-white",
             onClick: async () => {
                 try {
-                    const { error } = await window.supabaseClient
+                    const { error } = await supabaseClient
                         .from('presets')
                         .delete()
                         .eq('id', presetIdToDelete)
