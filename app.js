@@ -56,19 +56,33 @@ function initializeTelegramWebApp() {
         isTelegramReady = true;
         console.log('Telegram WebApp initialized successfully');
         
-        // Set theme colors
-        telegramWebApp.setHeaderColor('#ffffff');
-        telegramWebApp.setBackgroundColor('#ffffff');
-        
         // Expand to full height
         telegramWebApp.expand();
-        
-        // Enable closing confirmation
-        telegramWebApp.enableClosingConfirmation();
         
         return true;
     }
     return false;
+}
+
+// Cache modal elements
+function cacheModalElements() {
+    dom.genericModal = document.getElementById('generic-modal');
+    dom.genericModalPanel = document.getElementById('generic-modal-panel');
+    dom.genericModalTitle = document.getElementById('generic-modal-title');
+    dom.genericModalCloseBtn = document.getElementById('generic-modal-close-btn');
+    dom.genericModalContent = document.getElementById('generic-modal-content');
+    dom.genericModalFooter = document.getElementById('generic-modal-footer');
+
+    if (!dom.genericModal || !dom.genericModalPanel) {
+        console.error("CRITICAL: Modal elements not found!");
+    } else {
+        console.log("Modal elements successfully cached.");
+    }
+
+    // Setup Modal Close Button Listener
+    if (dom.genericModalCloseBtn && !dom.genericModalCloseBtn.onclick) {
+        dom.genericModalCloseBtn.onclick = hideModal;
+    }
 }
 
 // --- Modal Control Functions (showModal, hideModal) - (Assumed to be present and correct from previous state) ---
@@ -602,40 +616,23 @@ function sendList() {
 
 // Initial setup when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM fully loaded and parsed. Initializing app.");
-
+    console.log('DOM fully loaded and parsed. Initializing app.');
+    
     // Initialize Telegram WebApp
     initializeTelegramWebApp();
     
     // Cache modal elements
     cacheModalElements();
     
-    // Populate presets (this will also trigger initial load & UI update)
+    // Initialize the app
     await populatePresetSelector();
     
-    // Add event listeners for new CRUD buttons
-    if (dom.addPresetBtn) dom.addPresetBtn.addEventListener('click', handleAddPreset);
-    if (dom.editPresetBtn) dom.editPresetBtn.addEventListener('click', handleEditPreset);
-    if (dom.deletePresetBtn) dom.deletePresetBtn.addEventListener('click', handleDeletePreset);
-
-    // Initial UI update for preset buttons (safety net, should be handled by populatePresetSelector)
-    // If presetSelector has a value, use it, otherwise pass null or default.
-    const initialPresetId = dom.presetSelector ? dom.presetSelector.value : DEFAULT_PRESET_ID;
-    updateUserPresetEditUI(initialPresetId);
-
-    // If Supabase is not connected, ensure categories placeholder shows the message.
-    // This is a bit redundant if populatePresetSelector already does it, but acts as a fallback.
-    if (!isSupabaseConnected && dom.categoriesPlaceholder) {
-         if (!dom.categoriesPlaceholder.textContent.toLowerCase().includes("supabase not connected")) {
-            htmx.removeClass(dom.categoriesPlaceholder, 'hidden');
-            dom.categoriesPlaceholder.innerHTML = 'Supabase not connected. <br>Only local "Grocery List" is available. <br>Online features are disabled.';
-        }
-    } else if (isSupabaseConnected && dom.categoriesPlaceholder && dom.presetSelector.options.length > 0) {
-        // If connected and presets loaded, ensure placeholder isn't showing connection error
-        // and content loading is triggered by handlePresetSelectorChange.
-    }
-
-    updatePresetTitleStyle();
+    // Add event listeners
+    document.getElementById('add-preset-btn')?.addEventListener('click', handleAddPreset);
+    document.getElementById('edit-preset-btn')?.addEventListener('click', handleEditPreset);
+    document.getElementById('delete-preset-btn')?.addEventListener('click', handleDeletePreset);
+    
+    console.log('App.js loaded.');
 });
 
 // --- Item rendering and interaction logic --- (Assumed largely unchanged and correct)
