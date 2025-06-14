@@ -31,17 +31,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build project # This will run both build:css and build:js
         run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # IMPORTANT CHANGE HERE:
-          # Include both the 'dist' directory and the 'index.html' file from the root
+          # CORRECTED PATHS:
+          # Include dist, index.html, AND style.css
           path: |
             ./dist
             ./index.html
+            ./style.css # <-- ADD THIS LINE
 
   deploy:
     environment:
