@@ -49,19 +49,29 @@ const dom = {
 // Initialize Telegram WebApp
 let telegramWebApp = null;
 let isTelegramReady = false;
+let isGuestMode = false;
 
 function initializeTelegramWebApp() {
     if (window.Telegram && window.Telegram.WebApp) {
-        telegramWebApp = window.Telegram.WebApp;
-        isTelegramReady = true;
-        console.log('Telegram WebApp initialized successfully');
-        
-        // Expand to full height
-        telegramWebApp.expand();
-        
-        return true;
+        try {
+            telegramWebApp = window.Telegram.WebApp;
+            isTelegramReady = true;
+            console.log('Telegram WebApp initialized successfully');
+            
+            // Expand to full height
+            telegramWebApp.expand();
+            
+            return true;
+        } catch (error) {
+            console.warn('Error initializing Telegram WebApp:', error);
+            isGuestMode = true;
+            return false;
+        }
+    } else {
+        console.log('Running in guest mode (no Telegram WebApp)');
+        isGuestMode = true;
+        return false;
     }
-    return false;
 }
 
 // Cache modal elements
@@ -211,8 +221,55 @@ function handleEdgeFunctionError(error, operation) {
     );
 }
 
-// Update handleSavePreset to use better error handling
+// Update fetchUserPresets to handle guest mode
+async function fetchUserPresets() {
+    console.log("Fetching user presets...");
+
+    // If in guest mode, return default preset immediately
+    if (isGuestMode) {
+        console.log("Guest mode: returning default preset");
+        return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+    }
+
+    // Wait for Telegram WebApp to be ready
+    if (!isTelegramReady) {
+        console.log("Waiting for Telegram WebApp to initialize...");
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        if (!initializeTelegramWebApp()) {
+            console.warn("Telegram WebApp not available after waiting. Using default data.");
+            return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+        }
+    }
+
+    try {
+        const { data, error } = await supabase.functions.invoke('db-operations', {
+            method: 'POST',
+            body: JSON.stringify({
+                operation: 'preset',
+                action: 'read',
+                userId: telegramWebApp?.initDataUnsafe?.user?.id || MOCK_TELEGRAM_USER_ID
+            })
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log("Successfully fetched user presets:", data);
+        return data || [];
+    } catch (error) {
+        handleEdgeFunctionError(error, 'fetching presets');
+        return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+    }
+}
+
+// Update handleSavePreset to handle guest mode
 async function handleSavePreset() {
+    if (isGuestMode) {
+        showModal("Feature Unavailable", "Creating new presets is only available in Telegram.");
+        return;
+    }
+
     const input = document.getElementById('new-preset-name-input');
     const errorP = document.getElementById('create-preset-error');
     const newName = input ? input.value.trim() : '';
@@ -255,42 +312,6 @@ async function handleSavePreset() {
         
     } catch (error) {
         handleEdgeFunctionError(error, 'creating preset');
-    }
-}
-
-// Update fetchUserPresets to use better error handling
-async function fetchUserPresets() {
-    console.log("Fetching user presets...");
-
-    // Wait for Telegram WebApp to be ready
-    if (!isTelegramReady) {
-        console.log("Waiting for Telegram WebApp to initialize...");
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-        if (!initializeTelegramWebApp()) {
-            console.warn("Telegram WebApp not available after waiting. Using default data.");
-            return [{ id: "default_grocery_list_001", name: "Grocery List" }];
-        }
-    }
-
-    try {
-        const { data, error } = await supabase.functions.invoke('db-operations', {
-            method: 'POST',
-            body: JSON.stringify({
-                operation: 'preset',
-                action: 'read',
-                userId: telegramWebApp?.initDataUnsafe?.user?.id || MOCK_TELEGRAM_USER_ID
-            })
-        });
-
-        if (error) {
-            throw error;
-        }
-
-        console.log("Successfully fetched user presets:", data);
-        return data || [];
-    } catch (error) {
-        handleEdgeFunctionError(error, 'fetching presets');
-        return [{ id: "default_grocery_list_001", name: "Grocery List" }];
     }
 }
 
@@ -631,6 +652,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('add-preset-btn')?.addEventListener('click', handleAddPreset);
     document.getElementById('edit-preset-btn')?.addEventListener('click', handleEditPreset);
     document.getElementById('delete-preset-btn')?.addEventListener('click', handleDeletePreset);
+    
+    // Update UI based on mode
+    if (isGuestMode) {
+        // Hide or disable features not available in guest mode
+        document.getElementById('add-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
+        document.getElementById('edit-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
+        document.getElementById('delete-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
+    }
     
     console.log('App.js loaded.');
 });
