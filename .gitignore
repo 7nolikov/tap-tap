@@ -25,6 +25,7 @@ dist-ssr
 
 DESIGN_DOCUMENT.md
 SECURITY_DESIGN_DOCUMENT.md
+DATABASE_DESIGN_DOCUMENT.md
 docs/*
 
 /style.css

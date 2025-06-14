@@ -150,11 +150,16 @@ async function fetchUserPresets() {
     console.log("Fetching user presets...");
     if (!isSupabaseConnected || !window.supabaseClient) {
         console.warn("Supabase not connected. Cannot fetch user presets.");
-        return []; 
+        return [];
     }
     try {
-        const { data, error } = await window.supabaseClient.functions.invoke('tg-update', {
-            method: 'GET',
+        const { data, error } = await window.supabaseClient.functions.invoke('db-operations', {
+            method: 'POST',
+            body: JSON.stringify({
+                operation: 'preset',
+                action: 'read',
+                userId: MOCK_TELEGRAM_USER_ID
+            })
         });
 
         if (error) {
@@ -163,7 +168,7 @@ async function fetchUserPresets() {
             return [];
         }
         
-        console.log("Fetched user presets from Supabase Edge Function:", data);
+        console.log("Fetched user presets:", data);
         return data || [];
     } catch (error) {
         console.error("Exception during fetchUserPresets:", error);
@@ -273,9 +278,14 @@ async function handleSavePreset() {
     console.log(`Attempting to save new preset with name: "${newName}"`);
     
     try {
-        const { data: newPreset, error } = await window.supabaseClient.functions.invoke('tg-update', {
+        const { data: newPreset, error } = await window.supabaseClient.functions.invoke('db-operations', {
             method: 'POST',
-            body: JSON.stringify({ name: newName }),
+            body: JSON.stringify({
+                operation: 'preset',
+                action: 'create',
+                userId: MOCK_TELEGRAM_USER_ID,
+                data: { name: newName }
+            })
         });
 
         if (error) {
@@ -609,6 +619,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // If connected and presets loaded, ensure placeholder isn't showing connection error
         // and content loading is triggered by handlePresetSelectorChange.
     }
+
+    updatePresetTitleStyle();
 });
 
 // --- Item rendering and interaction logic --- (Assumed largely unchanged and correct)
@@ -834,3 +846,20 @@ document.body.addEventListener('htmx:afterSwap', function(event) {
 //     // }
 //     // getUsers();
 // } 
+
+function updatePresetTitleStyle() {
+    const presetTitle = document.querySelector('.preset-title');
+    if (presetTitle) {
+        presetTitle.classList.add(
+            'bg-accent',
+            'hover:bg-accent-darker',
+            'text-white',
+            'px-4',
+            'py-2',
+            'rounded-md',
+            'font-medium',
+            'transition-colors',
+            'duration-200'
+        );
+    }
+} 

@@ -18,12 +18,12 @@
             <!-- Preset Selector Title -->
             <div id="preset-title-dropdown-container" class="relative flex-grow mr-2">
                 <select id="preset-selector" name="preset_id"
-                    class="text-2xl md:text-3xl font-bold text-purple-400 text-center w-full bg-transparent border-0 p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate"
+                    class="preset-title text-2xl md:text-3xl font-bold text-white text-center w-full bg-accent hover:bg-accent-darker p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate transition-colors duration-200"
                     onchange="handlePresetSelectorChange(this)" 
                 >
                     <option value="" disabled selected>Loading Presets...</option>
                 </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-purple-400 opacity-75">
+                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-white opacity-75">
                     <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
             </div>
