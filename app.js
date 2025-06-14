@@ -147,34 +147,41 @@ document.body.addEventListener('loadPresetContent', function(event) {
 });
 
 async function fetchUserPresets() {
-    console.log("Fetching user presets...");
-    if (!isSupabaseConnected || !window.supabaseClient) {
-        console.warn("Supabase not connected. Cannot fetch user presets.");
-        return [];
-    }
-    try {
-        const { data, error } = await window.supabaseClient.functions.invoke('db-operations', {
-            method: 'POST',
-            body: JSON.stringify({
-                operation: 'preset',
-                action: 'read',
-                userId: MOCK_TELEGRAM_USER_ID
-            })
-        });
+  console.log("Fetching user presets...");
 
-        if (error) {
-            console.error("Error fetching user presets:", error);
-            showModal("Error Fetching Presets", `Could not load your presets: ${error.message}`);
-            return [];
-        }
-        
-        console.log("Fetched user presets:", data);
-        return data || [];
-    } catch (error) {
-        console.error("Exception during fetchUserPresets:", error);
-        showModal("Error", "An unexpected error occurred while fetching your presets.");
-        return [];
+  // Ensure Telegram WebApp is ready and initData is available
+  if (
+    !window.Telegram ||
+    !window.Telegram.WebApp ||
+    !window.Telegram.WebApp.initData
+  ) {
+    console.error("Telegram Web App data is not available yet.");
+    // Return empty array or default data to prevent app from crashing
+    return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("tg-update", {
+      headers: {
+        // This Authorization header is critical and must match the Edge Function's expectation
+        Authorization: `TMA ${window.Telegram.WebApp.initData}`,
+      },
+      // For a GET request, body is not needed, but for POST/PUT it would be here
+      // body: {}
+    });
+
+    if (error) {
+      // This will throw the "FunctionsHttpError" seen in your logs
+      throw error;
     }
+
+    console.log("Successfully fetched user presets:", data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching user presets:", error);
+    // Return an empty array on failure so the app doesn't crash
+    return [];
+  }
 }
 
 async function populatePresetSelector() {
