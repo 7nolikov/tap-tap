@@ -4,126 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuickShare List</title>
-    <link href="./style.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-primary-bg text-text-primary min-h-screen flex flex-col">
-
-    <!-- Header -->
-    <header class="p-4 md:p-6 text-center sticky top-0 z-10 bg-primary-bg/95 backdrop-blur-md pb-3 shadow-md">
-        <div class="max-w-xl mx-auto flex items-center justify-between">
-            <!-- Preset Selector Title -->
-            <div id="preset-title-dropdown-container" class="relative flex-grow mr-2">
-                <select id="preset-selector" name="preset_id"
-                    class="preset-title text-2xl md:text-3xl font-bold text-white text-center w-full bg-accent hover:bg-accent-darker p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate transition-colors duration-200"
-                    onchange="handlePresetSelectorChange(this)" 
-                >
-                    <option value="" disabled selected>Loading Presets...</option>
+<body class="bg-background text-text-primary">
+    <div class="container mx-auto px-4 py-6 max-w-md">
+        <!-- Header -->
+        <header class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <select id="preset-selector" class="text-lg font-semibold bg-transparent">
+                    <option value="default_grocery_list_001">Default List</option>
                 </select>
-                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-white opacity-75">
-                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                <div class="flex gap-2">
+                    <button id="add-preset-btn" class="p-2 text-blue-500">+</button>
+                    <button id="edit-preset-btn" class="p-2 text-gray-500">✎</button>
+                    <button id="delete-preset-btn" class="p-2 text-red-500">×</button>
                 </div>
             </div>
+        </header>
 
-            <!-- Preset Action Buttons -->
-            <div id="preset-action-buttons" class="flex items-center space-x-2">
-                <button id="add-preset-btn" title="Create New Preset" class="p-2 text-accent hover:text-accent-darker transition-colors">
-                    <svg class="w-6 h-6 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                </button>
-                <button id="edit-preset-btn" title="Edit Selected Preset" class="p-2 text-accent hover:text-accent-darker transition-colors hidden"> <!-- Initially hidden -->
-                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 12V7.172l2.586-2.586a1 1 0 111.414 1.414L6.414 8.586 5 10.000V12zm10-9.414L13.586 4 11 6.414 13.586 9l2.414-2.414L17.414 4a1 1 0 00-1.414-1.414zM5 14a1 1 0 00-1 1v1a1 1 0 001 1h10a1 1 0 001-1v-1a1 1 0 00-1-1H5z"></path></svg>
-                </button>
-                <button id="delete-preset-btn" title="Delete Selected Preset" class="p-2 text-red-500 hover:text-red-700 transition-colors hidden"> <!-- Initially hidden -->
-                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                </button>
+        <!-- Categories Container -->
+        <div id="categories-container" class="space-y-6">
+            <!-- Categories will be dynamically inserted here -->
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="categories-loading-indicator" class="hidden">
+            <div class="flex justify-center items-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
         </div>
-    </header>
 
-    <!-- Main Content Area -->
-    <main class="container mx-auto p-4 flex-grow mt-2 md:mt-4">
-        <div id="categories-container" class="space-y-8"
-            hx-trigger="loadPresetContent from:body"
-            hx-target="this"
-            hx-swap="innerHTML"
-            hx-indicator="#categories-loading-indicator"
-            hx-on:htmx:before-request="
-                let placeholder = document.getElementById('categories-placeholder');
-                if(placeholder) placeholder.classList.add('hidden');
-            "
-            hx-on:htmx:after-settle="
-                if(typeof resetSelectedItemsAndUI === 'function') resetSelectedItemsAndUI();
-                console.log('Categories container updated by HTMX.');
-                let container = document.getElementById('categories-container');
-                let placeholder = document.getElementById('categories-placeholder');
-                if (container && placeholder && container.children.length === 1 && container.children[0].id === 'categories-loading-indicator') {
-                    // If only loading indicator is present after settle, means empty response or error
-                    placeholder.textContent = 'No items found for this preset or failed to load.';
-                    htmx.removeClass(placeholder, 'hidden');
-                } else if (container && placeholder && container.children.length === 0) {
-                     placeholder.textContent = 'No items in this preset.';
-                     htmx.removeClass(placeholder, 'hidden');
-                }
-            "
-            hx-on:htmx:target-error="
-                let placeholder = document.getElementById('categories-placeholder');
-                if(placeholder) {
-                    placeholder.textContent = 'Error loading items. Please try again.';
-                    htmx.removeClass(placeholder, 'hidden');
-                }
-                console.error('HTMX target error on categories-container');
-            "
-        >
-            <div id="categories-loading-indicator" class="htmx-indicator text-center py-10">
-                <p class="text-gray-400 text-lg non-selectable">Loading items...</p>
-            </div>
-            <p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">Initializing...</p>
+        <!-- Placeholder -->
+        <div id="categories-placeholder" class="text-center text-gray-500 py-10">
+            Loading items...
         </div>
-    </main>
 
-    <!-- Footer with Send Button -->
-    <footer id="send-button-container" class="bg-container-bg p-4 shadow-md sticky bottom-0 hidden border-t border-gray-700">
-        <div class="container mx-auto">
-            <div id="selected-items-preview" class="mb-3 text-sm text-gray-400">
-                <!-- Selected items will be summarized here -->
-            </div>
-            <button 
-                id="send-button"
-                class="w-full bg-accent hover:bg-accent-darker text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-opacity duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                onclick="sendList()"
-                disabled>
+        <!-- Send Button Container -->
+        <div id="send-button-container" class="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+            <button id="send-button" class="w-full py-3 bg-blue-500 text-white rounded-lg hidden">
                 Send List
             </button>
         </div>
-    </footer>
 
-    <script src="config.js"></script> 
-    <script src="default-grocery-data.js"></script> <!-- Load default grocery data -->
-    <script src="app.js"></script>
+        <!-- Selected Items Preview -->
+        <div id="selected-items-preview" class="fixed bottom-20 left-0 right-0 p-4 bg-background border-t hidden">
+            <!-- Selected items will be shown here -->
+        </div>
 
-    <!-- Generic Modal -->
-    <div id="generic-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden transition-opacity duration-300 ease-in-out opacity-0">
-        <div id="generic-modal-panel" class="bg-container-bg rounded-lg shadow-xl p-5 md:p-6 w-full max-w-md transform transition-all duration-300 ease-in-out scale-95 opacity-0">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="generic-modal-title" class="text-xl font-semibold text-text-primary">Modal Title</h3>
-                <button id="generic-modal-close-btn" class="text-gray-400 hover:text-gray-200">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            <div id="generic-modal-content" class="text-text-secondary mb-6">
-                <!-- Dynamic content goes here -->
-                <p>Modal content will appear here.</p>
-            </div>
-            <div id="generic-modal-footer" class="flex justify-end space-x-3">
-                <!-- Dynamic buttons go here -->
-                <button class="px-4 py-2 text-sm bg-gray-600 hover:bg-gray-500 rounded-md text-text-primary transition-colors">Cancel</button>
-                <button class="px-4 py-2 text-sm bg-accent hover:bg-accent-darker rounded-md text-white transition-colors">Confirm</button>
+        <!-- Generic Modal -->
+        <div id="generic-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden opacity-0 transition-opacity duration-300">
+            <div id="generic-modal-panel" class="fixed inset-0 flex items-center justify-center p-4">
+                <div class="bg-background rounded-lg shadow-xl w-full max-w-md transform opacity-0 scale-95 transition-all duration-300">
+                    <div class="p-4 border-b">
+                        <div class="flex items-center justify-between">
+                            <h3 id="generic-modal-title" class="text-lg font-semibold"></h3>
+                            <button id="generic-modal-close-btn" class="text-gray-500 hover:text-gray-700">×</button>
+                        </div>
+                    </div>
+                    <div id="generic-modal-content" class="p-4"></div>
+                    <div id="generic-modal-footer" class="p-4 border-t flex justify-end gap-2"></div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Load bundled JavaScript -->
+    <script type="module" src="dist/app.bundle.js"></script>
 </body>
 </html> 
