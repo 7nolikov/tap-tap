@@ -46,6 +46,31 @@ const dom = {
     genericModalFooter: document.getElementById('generic-modal-footer')
 };
 
+// Initialize Telegram WebApp
+let telegramWebApp = null;
+let isTelegramReady = false;
+
+function initializeTelegramWebApp() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        telegramWebApp = window.Telegram.WebApp;
+        isTelegramReady = true;
+        console.log('Telegram WebApp initialized successfully');
+        
+        // Set theme colors
+        telegramWebApp.setHeaderColor('#ffffff');
+        telegramWebApp.setBackgroundColor('#ffffff');
+        
+        // Expand to full height
+        telegramWebApp.expand();
+        
+        // Enable closing confirmation
+        telegramWebApp.enableClosingConfirmation();
+        
+        return true;
+    }
+    return false;
+}
+
 // --- Modal Control Functions (showModal, hideModal) - (Assumed to be present and correct from previous state) ---
 function showModal(title, contentHTML, footerButtonsConfig = []) {
     if (!dom.genericModal || !dom.genericModalPanel) {
@@ -147,41 +172,35 @@ document.body.addEventListener('loadPresetContent', function(event) {
 });
 
 async function fetchUserPresets() {
-  console.log("Fetching user presets...");
+    console.log("Fetching user presets...");
 
-  // Ensure Telegram WebApp is ready and initData is available
-  if (
-    !window.Telegram ||
-    !window.Telegram.WebApp ||
-    !window.Telegram.WebApp.initData
-  ) {
-    console.error("Telegram Web App data is not available yet.");
-    // Return empty array or default data to prevent app from crashing
-    return [{ id: "default_grocery_list_001", name: "Grocery List" }];
-  }
-
-  try {
-    const { data, error } = await supabase.functions.invoke("tg-update", {
-      headers: {
-        // This Authorization header is critical and must match the Edge Function's expectation
-        Authorization: `TMA ${window.Telegram.WebApp.initData}`,
-      },
-      // For a GET request, body is not needed, but for POST/PUT it would be here
-      // body: {}
-    });
-
-    if (error) {
-      // This will throw the "FunctionsHttpError" seen in your logs
-      throw error;
+    // Wait for Telegram WebApp to be ready
+    if (!isTelegramReady) {
+        console.log("Waiting for Telegram WebApp to initialize...");
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        if (!initializeTelegramWebApp()) {
+            console.warn("Telegram WebApp not available after waiting. Using default data.");
+            return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+        }
     }
 
-    console.log("Successfully fetched user presets:", data);
-    return data;
-  } catch (error) {
-    console.error("Error fetching user presets:", error);
-    // Return an empty array on failure so the app doesn't crash
-    return [];
-  }
+    try {
+        const { data, error } = await supabase.functions.invoke("tg-update", {
+            headers: {
+                Authorization: `TMA ${telegramWebApp.initData}`,
+            },
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log("Successfully fetched user presets:", data);
+        return data || [];
+    } catch (error) {
+        console.error("Error fetching user presets:", error);
+        return [{ id: "default_grocery_list_001", name: "Grocery List" }];
+    }
 }
 
 async function populatePresetSelector() {
@@ -526,45 +545,31 @@ function sendList() {
     // Safety check to prevent errors if selectedItems is null, undefined, or not an object
     if (!selectedItems || typeof selectedItems !== 'object') {
         console.error("Cannot send list: selectedItems is not a valid object.", selectedItems);
-        if (window.Telegram && window.Telegram.WebApp) {
-            window.Telegram.WebApp.showAlert("An error occurred. Could not prepare the list to send.");
+        if (telegramWebApp) {
+            telegramWebApp.showAlert("An error occurred. Could not prepare the list to send.");
         }
         return;
     }
 
     const itemCount = Object.keys(selectedItems).length;
     if (itemCount === 0) {
-        showModal("Empty List", "Please select some items before sending.");
+        if (telegramWebApp) {
+            telegramWebApp.showAlert("Please select at least one item to send.");
+        }
         return;
     }
 
-    let formattedList = `${currentActivePresetName}:
-`;
-    for (const categoryName in selectedItems) {
-        if (Object.keys(selectedItems[categoryName].items).length > 0) {
-            formattedList += `
-${categoryName}:
-`;
-            for (const itemName in selectedItems[categoryName].items) {
-                const item = selectedItems[categoryName].items[itemName];
-                formattedList += `- ${item.name} ${item.quantity}${item.unit || ''}
-`;
-            }
-        }
-    }
-
-    console.log("Formatted list for Telegram:", formattedList);
-
-    if (window.Telegram && window.Telegram.WebApp) {
-        try {
-            window.Telegram.WebApp.switchInlineQuery(formattedList.trim());
-        } catch (e) {
-            console.error("Error calling Telegram.WebApp.switchInlineQuery:", e);
-            showModal("Telegram Error", "Could not switch to Telegram inline query. Error: " + e.message);
-        }
+    // Format the message
+    const message = formatListForTelegram(selectedItems);
+    
+    // Send the message
+    if (telegramWebApp) {
+        telegramWebApp.sendData(JSON.stringify({
+            type: 'list',
+            content: message
+        }));
     } else {
-        console.warn("Telegram WebApp SDK not available. Simulating send with an alert.");
-        showModal("Share List (Simulated)", `<p>If this were in Telegram, you'd now be choosing a chat to share this list:</p><pre class="mt-2 p-2 bg-primary-bg rounded text-sm whitespace-pre-wrap">${formattedList.trim()}</pre>`);
+        console.error("Telegram WebApp is not available");
     }
 }
 
@@ -572,35 +577,11 @@ ${categoryName}:
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed. Initializing app.");
 
-    // Re-cache modal DOM elements here to be certain they are available
-    dom.genericModal = document.getElementById('generic-modal');
-    dom.genericModalPanel = document.getElementById('generic-modal-panel');
-    dom.genericModalTitle = document.getElementById('generic-modal-title');
-    dom.genericModalCloseBtn = document.getElementById('generic-modal-close-btn');
-    dom.genericModalContent = document.getElementById('generic-modal-content');
-    dom.genericModalFooter = document.getElementById('generic-modal-footer');
-
-    if (!dom.genericModal || !dom.genericModalPanel) {
-        console.error("CRITICAL: Modal elements still not found after DOMContentLoaded!");
-    } else {
-        console.log("Modal elements successfully cached within DOMContentLoaded.");
-    }
-
-    // Initialize Telegram Web App
-    if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.ready();
-        // Set header color to match theme (example, customize as needed)
-        // window.Telegram.WebApp.setHeaderColor('#1f2937'); // Gray 800
-        // console.log("Telegram WebApp SDK initialized.");
-        // showTelegramUserInfo(); // Optional: Display user info if needed for debugging
-    } else {
-        console.warn("Telegram WebApp SDK not found. Running in browser mode.");
-    }
+    // Initialize Telegram WebApp
+    initializeTelegramWebApp();
     
-    // Setup Modal Close Button Listener (if not already set up)
-    if (dom.genericModalCloseBtn && !dom.genericModalCloseBtn.onclick) {
-        dom.genericModalCloseBtn.onclick = hideModal;
-    }
+    // Cache modal elements
+    cacheModalElements();
     
     // Populate presets (this will also trigger initial load & UI update)
     await populatePresetSelector();
