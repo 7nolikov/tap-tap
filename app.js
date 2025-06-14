@@ -171,6 +171,80 @@ document.body.addEventListener('loadPresetContent', function(event) {
     updateUserPresetEditUI(currentActivePresetId); // Update button states based on new preset
 });
 
+// Helper function to handle Edge Function errors
+function handleEdgeFunctionError(error, operation) {
+    console.error(`Error during ${operation}:`, error);
+    
+    let errorMessage = 'An unexpected error occurred';
+    let errorDetails = '';
+    
+    if (error.message) {
+        errorMessage = error.message;
+    }
+    
+    if (error.details) {
+        errorDetails = typeof error.details === 'string' 
+            ? error.details 
+            : JSON.stringify(error.details, null, 2);
+    }
+    
+    showModal(
+        'Error',
+        `<div class="text-red-500">
+            <p class="font-semibold">${errorMessage}</p>
+            ${errorDetails ? `<pre class="mt-2 text-sm bg-red-50 p-2 rounded">${errorDetails}</pre>` : ''}
+        </div>`
+    );
+}
+
+// Update handleSavePreset to use better error handling
+async function handleSavePreset() {
+    const input = document.getElementById('new-preset-name-input');
+    const errorP = document.getElementById('create-preset-error');
+    const newName = input ? input.value.trim() : '';
+
+    if (!newName) {
+        if(errorP) {
+            errorP.textContent = 'Preset name cannot be empty.';
+            htmx.removeClass(errorP, 'hidden');
+        }
+        return;
+    }
+    
+    if(errorP) htmx.addClass(errorP, 'hidden');
+    console.log(`Attempting to save new preset with name: "${newName}"`);
+    
+    try {
+        const { data: newPreset, error } = await supabase.functions.invoke('db-operations', {
+            method: 'POST',
+            body: JSON.stringify({
+                operation: 'preset',
+                action: 'create',
+                userId: telegramWebApp?.initDataUnsafe?.user?.id || MOCK_TELEGRAM_USER_ID,
+                data: { name: newName }
+            })
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log('Successfully created new preset:', newPreset);
+        hideModal();
+        await populatePresetSelector(); // Refresh the list
+        
+        // Find and select the new preset
+        if (dom.presetSelector && newPreset.id) {
+            dom.presetSelector.value = newPreset.id;
+            handlePresetSelectorChange(dom.presetSelector); // Trigger load
+        }
+        
+    } catch (error) {
+        handleEdgeFunctionError(error, 'creating preset');
+    }
+}
+
+// Update fetchUserPresets to use better error handling
 async function fetchUserPresets() {
     console.log("Fetching user presets...");
 
@@ -185,10 +259,13 @@ async function fetchUserPresets() {
     }
 
     try {
-        const { data, error } = await supabase.functions.invoke("tg-update", {
-            headers: {
-                Authorization: `TMA ${telegramWebApp.initData}`,
-            },
+        const { data, error } = await supabase.functions.invoke('db-operations', {
+            method: 'POST',
+            body: JSON.stringify({
+                operation: 'preset',
+                action: 'read',
+                userId: telegramWebApp?.initDataUnsafe?.user?.id || MOCK_TELEGRAM_USER_ID
+            })
         });
 
         if (error) {
@@ -198,7 +275,7 @@ async function fetchUserPresets() {
         console.log("Successfully fetched user presets:", data);
         return data || [];
     } catch (error) {
-        console.error("Error fetching user presets:", error);
+        handleEdgeFunctionError(error, 'fetching presets');
         return [{ id: "default_grocery_list_001", name: "Grocery List" }];
     }
 }
@@ -285,56 +362,6 @@ function handleAddPreset() {
             hideOnClick: false // Keep modal open to show loading/error
         }
     ]);
-}
-
-async function handleSavePreset() {
-    const input = document.getElementById('new-preset-name-input');
-    const errorP = document.getElementById('create-preset-error');
-    const newName = input ? input.value.trim() : '';
-
-    if (!newName) {
-        if(errorP) {
-            errorP.textContent = 'Preset name cannot be empty.';
-            htmx.removeClass(errorP, 'hidden');
-        }
-        return;
-    }
-    
-    if(errorP) htmx.addClass(errorP, 'hidden');
-    console.log(`Attempting to save new preset with name: "${newName}"`);
-    
-    try {
-        const { data: newPreset, error } = await window.supabaseClient.functions.invoke('db-operations', {
-            method: 'POST',
-            body: JSON.stringify({
-                operation: 'preset',
-                action: 'create',
-                userId: MOCK_TELEGRAM_USER_ID,
-                data: { name: newName }
-            })
-        });
-
-        if (error) {
-            throw error;
-        }
-
-        console.log('Successfully created new preset:', newPreset);
-        hideModal();
-        await populatePresetSelector(); // Refresh the list
-        
-        // Find and select the new preset
-        if (dom.presetSelector && newPreset.id) {
-            dom.presetSelector.value = newPreset.id;
-            handlePresetSelectorChange(dom.presetSelector); // Trigger load
-        }
-        
-    } catch (error) {
-        console.error("Error creating preset:", error);
-        if(errorP) {
-            errorP.textContent = `Error: ${error.message}`;
-            htmx.removeClass(errorP, 'hidden');
-        }
-    }
 }
 
 function handleEditPreset() {
