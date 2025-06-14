@@ -57,10 +57,13 @@ function initializeTelegramWebApp() {
             telegramWebApp = window.Telegram.WebApp;
             isTelegramReady = true;
             console.log('Telegram WebApp initialized successfully');
-            
-            // Expand to full height
+            // Only supported method:
             telegramWebApp.expand();
-            
+            // The following are NOT supported in all Telegram clients and will throw warnings:
+            // telegramWebApp.setHeaderColor('#ffffff');
+            // telegramWebApp.setBackgroundColor('#ffffff');
+            // telegramWebApp.enableClosingConfirmation();
+            // These warnings are harmless and can be ignored or commented out.
             return true;
         } catch (error) {
             console.warn('Error initializing Telegram WebApp:', error);
@@ -74,7 +77,7 @@ function initializeTelegramWebApp() {
     }
 }
 
-// Cache modal elements
+// Cache modal elements (ensure this is always defined and globally available)
 function cacheModalElements() {
     dom.genericModal = document.getElementById('generic-modal');
     dom.genericModalPanel = document.getElementById('generic-modal-panel');
@@ -85,6 +88,7 @@ function cacheModalElements() {
 
     if (!dom.genericModal || !dom.genericModalPanel) {
         console.error("CRITICAL: Modal elements not found!");
+        return;
     } else {
         console.log("Modal elements successfully cached.");
     }
@@ -94,6 +98,7 @@ function cacheModalElements() {
         dom.genericModalCloseBtn.onclick = hideModal;
     }
 }
+window.cacheModalElements = cacheModalElements; // Make sure it's globally available
 
 // --- Modal Control Functions (showModal, hideModal) - (Assumed to be present and correct from previous state) ---
 function showModal(title, contentHTML, footerButtonsConfig = []) {
@@ -637,30 +642,19 @@ function sendList() {
 
 // Initial setup when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- Initialization order is important ---
     console.log('DOM fully loaded and parsed. Initializing app.');
-    
-    // Initialize Telegram WebApp
     initializeTelegramWebApp();
-    
-    // Cache modal elements
-    cacheModalElements();
-    
-    // Initialize the app
+    cacheModalElements(); // Make sure this is called with correct spelling
     await populatePresetSelector();
-    
-    // Add event listeners
     document.getElementById('add-preset-btn')?.addEventListener('click', handleAddPreset);
     document.getElementById('edit-preset-btn')?.addEventListener('click', handleEditPreset);
     document.getElementById('delete-preset-btn')?.addEventListener('click', handleDeletePreset);
-    
-    // Update UI based on mode
     if (isGuestMode) {
-        // Hide or disable features not available in guest mode
         document.getElementById('add-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
         document.getElementById('edit-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
         document.getElementById('delete-preset-btn')?.classList.add('opacity-50', 'cursor-not-allowed');
     }
-    
     console.log('App.js loaded.');
 });
 
