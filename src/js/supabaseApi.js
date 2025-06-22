@@ -101,7 +101,7 @@ export async function authenticateUser() {
     console.log("User authenticated successfully. JWT and User ID set.", { userId: currentSupabaseUserId });
     return true;
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Frontend: User authentication failed.", error);
     handleSupabaseError(error, "user authentication");
     currentAuthToken = null;
@@ -166,7 +166,7 @@ async function invokeDbOperation(operationType, action, data = {}, id = null) {
     }
     return responseData;
 
-  } catch (error: any) {
+  } catch (error) {
     // This catch block handles errors thrown by `supabaseClient.functions.invoke`
     // or by `authenticateUser()` if called within this function.
     handleSupabaseError(error, `${operationType} ${action}`);
