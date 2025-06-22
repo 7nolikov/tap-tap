@@ -74,6 +74,7 @@ export async function authenticateUser() {
     } else {
       // If in guest mode or Telegram WebApp not available, proceed without Authorization header.
       // The `tg-update` function on the backend will handle 'dev' profile guest access.
+      headers["Authorization"] = ""; // No TMA header for guest mode
       console.log("Attempting guest mode authentication via tg-update (no TMA header).");
     }
 
