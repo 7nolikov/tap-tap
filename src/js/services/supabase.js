@@ -16,9 +16,24 @@ class SupabaseService {
         return false;
     }
 
+    isGuestMode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('mode') === 'guest';
+    }
+
     async fetchUserPresets() {
         if (!this.client) {
             throw new Error('Supabase client not initialized');
+        }
+
+        console.log("Fetching user presets...");
+        const guestMode = this.isGuestMode();
+
+        if (guestMode) {
+            console.log("Running in Guest Mode.");
+        } else if (!window.Telegram?.WebApp?.initData) {
+            console.error("Telegram Web App data not available.");
+            return []; // Prevent error in non-guest, non-Telegram environments
         }
 
         try {
@@ -42,6 +57,15 @@ class SupabaseService {
             throw new Error('Supabase client not initialized');
         }
 
+        const guestMode = this.isGuestMode();
+
+        if (guestMode) {
+            console.log("Running in Guest Mode.");
+        } else if (!window.Telegram?.WebApp?.initData) {
+            console.error("Telegram Web App data not available.");
+            return []; // Prevent error in non-guest, non-Telegram environments
+        }
+
         try {
             const { data, error } = await this.client
                 .from('user_presets')
@@ -59,6 +83,15 @@ class SupabaseService {
     async deletePreset(presetId) {
         if (!this.client) {
             throw new Error('Supabase client not initialized');
+        }
+
+        const guestMode = this.isGuestMode();
+
+        if (guestMode) {
+            console.log("Running in Guest Mode.");
+        } else if (!window.Telegram?.WebApp?.initData) {
+            console.error("Telegram Web App data not available.");
+            return []; // Prevent error in non-guest, non-Telegram environments
         }
 
         try {

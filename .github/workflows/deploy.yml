@@ -42,7 +42,7 @@ jobs:
           path: |
             ./dist
             ./index.html
-            ./style.css # <-- ADD THIS LINE
+            ./src/input.css
 
   deploy:
     environment:
