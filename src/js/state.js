@@ -1,3 +1,4 @@
+// state.js
 /**
  * Manages global application state.
  * Using `let` for direct export of mutable state, or functions for controlled updates.
@@ -29,4 +30,12 @@ export function setCurrentActivePreset(preset) {
  */
 export function setUserPresetsCache(cache) {
   userPresetsCache = cache;
+}
+
+/**
+ * Returns the current `userPresetsCache`.
+ * @returns {Array<Object>} The cached array of user preset objects.
+ */
+export function getPresetsCache() {
+  return userPresetsCache;
 }
