@@ -1,72 +1,82 @@
+// src/js/presetManager.js
+
 import { dom } from "./domCache.js";
 import { DEFAULT_PRESET_ID } from "./constants.js";
 import {
   currentActivePreset,
   setCurrentActivePreset,
-  userPresetsCache,
+  userPresetsCache, // Now primarily updated by setUserPresetsCache, not directly modified here
   setUserPresetsCache,
 } from "./state.js";
 import { showModal, hideModal } from "./modal.js";
 import {
-  fetchUserPresets,
+  fetchUserPresets, // This now returns the combined list (DB + default if empty)
   handleSavePreset as supabaseSavePreset,
   handleEditPreset as supabaseEditPreset,
   handleDeletePreset as supabaseDeletePreset,
 } from "./supabaseApi.js";
-import { renderPresetFromLocalData } from "./itemInteractions.js";
+// renderPresetFromLocalData is no longer explicitly called from here for initial load
+// It's triggered by the CustomEvent 'loadPresetContent' listened to in itemInteractions.js
+// import { renderPresetFromLocalData } from "./itemInteractions.js"; // This import is not strictly needed here anymore
 import { supabaseClient } from "./supabaseApi.js"; // Import supabaseClient directly for checks
-import { telegramWebApp, isGuestMode } from "./telegram.js"; // For user ID and guest mode checks
+// import { telegramWebApp, isGuestMode } from "./telegram.js"; // Not directly used in presetManager for UI logic
 
 /**
  * Manages the logic for populating the preset selector and handling CRUD operations for presets.
  */
 
 /**
- * Populates the preset selector dropdown with default and user presets.
+ * Populates the preset selector dropdown with fetched or default presets.
+ * It also triggers the initial display of content for the first preset.
  */
 export async function populatePresetSelector() {
   if (!dom.presetSelector) {
     console.error("Preset selector DOM element not found!");
     return;
   }
-  dom.presetSelector.innerHTML = ""; // Clear existing options
+  dom.presetSelector.innerHTML =
+    '<option value="" disabled selected>Loading Presets...</option>'; // Show loading state
 
-  // Always add Default Grocery List first
-  const defaultOption = document.createElement("option");
-  defaultOption.value = DEFAULT_PRESET_ID;
-  defaultOption.textContent = window.defaultGroceryData?.name || "Grocery List";
-  dom.presetSelector.appendChild(defaultOption);
+  try {
+    // fetchUserPresets now handles returning default data if DB is empty, AND updates userPresetsCache
+    const fetchedPresets = await fetchUserPresets();
 
-  if (supabaseClient) {
-    // Check if supabaseClient is available before trying to fetch
-    const fetchedPresets = await fetchUserPresets(); // This function updates userPresetsCache internally
-    // userPresetsCache is already updated by fetchUserPresets, so no need for `setUserPresetsCache` here
-    fetchedPresets.forEach((preset) => {
-      // Ensure we don't duplicate the default preset if it happens to be fetched (unlikely by design)
-      if (preset.id === DEFAULT_PRESET_ID) return;
+    if (fetchedPresets.length > 0) {
+      dom.presetSelector.innerHTML = ""; // Clear loading message
 
-      const option = document.createElement("option");
-      option.value = preset.id;
-      option.textContent = preset.name;
-      dom.presetSelector.appendChild(option);
-    });
-  } else {
-    dom.categoriesPlaceholder?.classList.remove("hidden");
-    dom.categoriesPlaceholder.innerHTML =
-      'Supabase not connected.<br>Only local "Grocery List" is available.<br>Online features (saving, loading other presets) are disabled.';
-    console.info(
-      "Supabase not connected. Displaying message in categories placeholder."
-    );
-  }
+      // Populate dropdown with all fetched presets (including the default if it was returned)
+      fetchedPresets.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.id;
+        option.textContent = preset.name;
+        dom.presetSelector.appendChild(option);
+      });
 
-  // Set initial selection and trigger content load for the first preset
-  if (dom.presetSelector.options.length > 0) {
-    dom.presetSelector.selectedIndex = 0;
-    // Trigger the change handler manually for initial load
-    handlePresetSelectorChange(dom.presetSelector);
-  } else {
-    dom.categoriesPlaceholder.textContent = "No presets available to load.";
-    updatePresetCrudButtons(null); // No presets, disable CRUD buttons
+      // Select the first preset (which will be the default if only default exists)
+      const initialPresetId = fetchedPresets[0].id;
+      dom.presetSelector.value = initialPresetId; // Set the value of the select element
+
+      // Trigger the change handler manually for initial content load
+      // This will dispatch the 'loadPresetContent' CustomEvent
+      handlePresetSelectorChange(dom.presetSelector);
+    } else {
+      // This branch should be rare if default data fallback works correctly in supabaseApi.js,
+      // but good for robustness if no presets (even default) are ever available.
+      dom.presetSelector.innerHTML =
+        '<option value="" disabled selected>No Presets Available</option>';
+      dom.categoriesContainer.innerHTML =
+        '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">No presets available to load. Create one to get started!</p>';
+    }
+
+    // Update CRUD buttons based on the initially selected preset or lack thereof
+    updatePresetCrudButtons(dom.presetSelector.value);
+  } catch (error) {
+    console.error("Error populating preset selector:", error);
+    dom.presetSelector.innerHTML =
+      '<option value="" disabled selected>Error loading presets</option>';
+    dom.categoriesContainer.innerHTML =
+      '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">Failed to load presets. Please check your connection.</p>';
+    updatePresetCrudButtons(null); // Disable buttons on error
   }
 }
 
@@ -113,7 +123,16 @@ export function handleAddPreset() {
             hideModal();
             await populatePresetSelector(); // Refresh and re-select
             dom.presetSelector.value = createdPreset.id;
-            handlePresetSelectorChange(dom.presetSelector);
+            handlePresetSelectorChange(dom.presetSelector); // Trigger content load for new preset
+          } else {
+            console.error("Failed to add new preset.");
+            // Error handling already done by handleSupabaseError, but can show a generic modal error too
+            showModal(
+              "Error",
+              "Failed to create new preset. Please try again.",
+              null,
+              true
+            );
           }
         },
         hideOnClick: false, // Keep modal open to show loading/error
@@ -183,7 +202,7 @@ export function handleEditPreset() {
           if (
             existingCheck ||
             (DEFAULT_PRESET_ID !== presetIdToEdit &&
-              window.defaultGroceryData?.name.toLowerCase() ===
+              window.defaultGroceryData?.name.toLowerCase() === // Still using window.defaultGroceryData here
                 updatedName.toLowerCase())
           ) {
             errorP.textContent =
@@ -196,12 +215,24 @@ export function handleEditPreset() {
           const updatedPreset = await supabaseEditPreset(
             presetIdToEdit,
             updatedName
-          ); // Call supabaseApi function
+          );
           if (updatedPreset) {
             hideModal();
-            await populatePresetSelector();
-            dom.presetSelector.value = updatedPreset.id;
-            handlePresetSelectorChange(dom.presetSelector);
+            // No need to re-populate full selector, just update the option text
+            const option = dom.presetSelector.querySelector(
+              `option[value="${updatedPreset.id}"]`
+            );
+            if (option) {
+              option.textContent = updatedPreset.name;
+            }
+            // Update the cache as well
+            const index = userPresetsCache.findIndex(
+              (p) => p.id === updatedPreset.id
+            );
+            if (index !== -1) {
+              userPresetsCache[index].name = updatedPreset.name;
+            }
+            handlePresetSelectorChange(dom.presetSelector); // Trigger content load to refresh UI if name changes.
           } else {
             errorP.textContent =
               "Failed to update preset. It might no longer exist or you lack permission.";
@@ -252,9 +283,8 @@ export function handleDeletePreset() {
           if (success) {
             hideModal();
             await populatePresetSelector();
-            // After deletion, typically select the default or first available preset
-            dom.presetSelector.value = DEFAULT_PRESET_ID;
-            handlePresetSelectorChange(dom.presetSelector);
+            // After deletion, populatePresetSelector will automatically select the first valid preset (or default)
+            // and trigger handlePresetSelectorChange for content update.
           } else {
             // Error handled by supabaseApi.handleSupabaseError
           }
@@ -270,12 +300,9 @@ export function handleDeletePreset() {
  */
 export function updatePresetCrudButtons(selectedPresetId) {
   const isDefault = selectedPresetId === DEFAULT_PRESET_ID;
-  const isValidUserPresetSelected =
-    selectedPresetId &&
-    !isDefault &&
-    userPresetsCache.some((p) => p.id === selectedPresetId);
   const canInteractWithSupabase = !!supabaseClient;
 
+  // Add Preset button
   if (dom.addPresetBtn) {
     dom.addPresetBtn.disabled = !canInteractWithSupabase;
     dom.addPresetBtn.style.opacity = canInteractWithSupabase ? "1" : "0.5";
@@ -284,9 +311,11 @@ export function updatePresetCrudButtons(selectedPresetId) {
       : "not-allowed";
   }
 
+  // Edit/Delete buttons (only visible for user-created presets, not default, and if Supabase is connected)
   [dom.editPresetBtn, dom.deletePresetBtn].forEach((btn) => {
     if (btn) {
-      if (canInteractWithSupabase && isValidUserPresetSelected) {
+      if (canInteractWithSupabase && !isDefault && selectedPresetId) {
+        // Check if it's not the default preset
         btn.classList.remove("hidden");
         btn.disabled = false;
       } else {
@@ -315,9 +344,13 @@ export function handlePresetSelectorChange(selectElement) {
 
   setCurrentActivePreset({ id: presetId, name: presetName }); // Update global active preset state
 
+  // Update CRUD buttons immediately on selection change
+  updatePresetCrudButtons(presetId);
+
+  // Dispatch the event that itemInteractions.js listens for to render content
   document.body.dispatchEvent(
     new CustomEvent("loadPresetContent", {
-      detail: { presetId, presetName },
+      detail: { presetId: presetId, presetName: presetName }, // Pass full detail for convenience
     })
   );
 }
