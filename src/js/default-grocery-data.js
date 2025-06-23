@@ -112,8 +112,3 @@ export const defaultGroceryData = {
         }
     ]
 };
-
-// Make it available globally if not using modules
-if (typeof window !== 'undefined') {
-    window.defaultGroceryData = defaultGroceryData;
-} 
