@@ -1,5 +1,3 @@
-// src/js/itemInteractions.js
-
 import { dom } from "./domCache.js";
 import {
   selectedItems,
@@ -9,13 +7,6 @@ import {
 } from "./state.js";
 import { telegramWebApp } from "./telegram.js";
 import { showModal } from "./modal.js";
-
-/**
- * Handles the rendering of categories and items, and all user interactions with items.
- */
-
-// Function is now OBSOLETE as rendering will be handled by the event listener directly.
-// export function renderPresetFromLocalData(presetData) { /* ... remove this function ... */ }
 
 /**
  * Triggers a visual animation on an item element.
