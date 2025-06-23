@@ -1,4 +1,4 @@
-const defaultGroceryData = {
+export const defaultGroceryData = {
     id: 'default_grocery_list_001', // Unique ID for this default preset
     name: 'Grocery List', // Display name
     isDefault: true,
