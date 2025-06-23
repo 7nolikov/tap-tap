@@ -1,7 +1,8 @@
 import { showModal } from "./modal.js";
 import { telegramWebApp, isGuestMode } from "./telegram.js";
 import { DEFAULT_PRESET_ID } from "./constants.js";
-import { setUserPresetsCache } from "./state.js"; // Only need the setter here
+import { setUserPresetsCache } from "./state.js";
+import { defaultGroceryData } from "./default-grocery-data.js"; 
 
 /**
  * Manages Supabase client initialization and API interactions with Edge Functions.
@@ -186,11 +187,66 @@ export async function fetchUserPresets() {
   try {
     const data = await invokeDbOperation("preset", "read");
     console.log("Successfully fetched user presets:", data);
-    setUserPresetsCache(data || []); // Update global state cache
-    return data || [];
+
+    // --- NEW/UPDATED LOGIC HERE: Return default if DB returns empty array ---
+    if (!data || data.length === 0) {
+      console.log(
+        "No user presets found in DB. Returning default grocery data."
+      );
+      // Map the defaultGroceryData structure to match the database schema's expected format
+      const defaultPresets = [
+        {
+          id: defaultGroceryData.id,
+          name: defaultGroceryData.name,
+          // user_id and created_at won't be present for default, which is fine for client-side display
+          categories: defaultGroceryData.categories.map((cat) => ({
+            id: cat.id,
+            name: cat.name,
+            color_coding: cat.color_hex, // Map color_hex to color_coding
+            // preset_id, user_id, created_at for default category won't be present
+            items: cat.items.map((item) => ({
+              id: item.id,
+              name: item.name,
+              increment_step_value: item.incrementStep, // Map incrementStep to increment_step_value
+              unit_of_measure: item.unit, // Map unit to unit_of_measure
+              // category_id, user_id, created_at for default item won't be present
+            })),
+          })),
+        },
+      ];
+      setUserPresetsCache(defaultPresets); // Update global cache with default
+      return defaultPresets;
+    }
+    // --- END NEW/UPDATED LOGIC ---
+
+    setUserPresetsCache(data); // Update global cache with fetched data
+    return data;
   } catch (error) {
-    // Error already handled by invokeDbOperation, just return fallback
-    return [{ id: DEFAULT_PRESET_ID, name: window.defaultGroceryData?.name || "Grocery List" }];
+    // This catch block handles actual network or server errors from invokeDbOperation.
+    console.error(
+      "Error fetching user presets from DB. Falling back to default data.",
+      error
+    );
+    // If an error occurs, still return the default presets
+    const defaultPresets = [
+      {
+        id: defaultGroceryData.id,
+        name: defaultGroceryData.name,
+        categories: defaultGroceryData.categories.map((cat) => ({
+          id: cat.id,
+          name: cat.name,
+          color_coding: cat.color_hex,
+          items: cat.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            increment_step_value: item.incrementStep,
+            unit_of_measure: item.unit,
+          })),
+        })),
+      },
+    ];
+    setUserPresetsCache(defaultPresets);
+    return defaultPresets;
   }
 }
 

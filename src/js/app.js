@@ -26,12 +26,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("DOM fully loaded and parsed. Initializing app.");
 
   // Initialize core components
-  // Passed `hideModal` from `modal.js` because `domCache.js` doesn't directly import `modal.js`
-  // to avoid circular dependencies if `modal.js` were to import `domCache.js` for `dom`.
-  // In this structure, `modal.js` imports `domCache.js`, so passing `hideModal` here is required.
-  // If you define `hideModal` directly in `domCache.js` this step changes.
-  // Assuming `modal.js`'s `hideModal` function is the canonical one to use.
-  // We need to import `hideModal` into `app.js` from `modal.js` first.
   import("./modal.js")
     .then(({ hideModal }) => {
       cacheAndSetupModalElements(hideModal);
