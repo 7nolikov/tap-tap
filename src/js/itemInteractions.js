@@ -54,7 +54,6 @@ export function updateItemUIDisplay(itemId) {
       return;
   }
 
-  // Determine current quantity and unit for display
   const quantity = itemData ? itemData.quantity : 0;
   // Fallback to dataset if itemData isn't available (e.g., during reset for unselected items)
   const unit = itemData ? (itemData.unit || '') : (itemElement.dataset.unitOfMeasure || '');
@@ -66,7 +65,7 @@ export function updateItemUIDisplay(itemId) {
     decrementButton.classList.add('opacity-100');
   } else {
     itemElement.classList.remove('selected'); // Remove 'selected' class
-    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Show "0 unit" as per screenshot
+    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Show "0 unit" as per screenshot for unselected
     decrementButton.classList.remove('opacity-100'); // Hide decrement button
     decrementButton.classList.add('opacity-0');
   }
@@ -183,12 +182,10 @@ export function updateSendButtonVisibilityAndPreview() {
  * This is called when a new preset is loaded or edited.
  */
 export function resetSelectedItemsAndUI() {
-  // Get IDs of items that were selected BEFORE clearing the state
   const previouslySelectedIds = Object.keys(selectedItems);
 
   setSelectedItems({}); // Clear the selectedItems state
 
-  // Update the UI for each item that *was* selected to reset its display
   previouslySelectedIds.forEach(itemId => {
     updateItemUIDisplay(itemId); // This will set it to unselected/0 quantity
   });
@@ -213,13 +210,12 @@ export function formatListForTelegram(items) {
     const categoriesMap = new Map();
 
     currentPresetData.categories.forEach(category => {
-      // Filter category.items to get only those that are currently selected
       const selectedItemsInCategory = category.items.filter(item => items[item.id]);
 
       if (selectedItemsInCategory.length > 0) {
         categoriesMap.set(category.id, {
           name: category.name,
-          items: selectedItemsInCategory.map(item => items[item.id]) // Get the selected quantity/unit
+          items: selectedItemsInCategory.map(item => items[item.id])
         });
       }
     });
@@ -235,7 +231,6 @@ export function formatListForTelegram(items) {
     });
 
   } else {
-    // Fallback if preset data or categories are missing/malformed
     Object.values(items).forEach((item) => {
       const [, ...nameParts] = item.name.split(" ");
       const itemNameWithoutIcon = nameParts.join(" ");
@@ -317,25 +312,24 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
   let htmlContent = '';
   selectedPreset.categories.forEach(category => {
-    // Determine the border color for the category card
-    const categoryBorderColorClass = category.color_coding
-      ? `border-[${category.color_coding}]` // Use direct color code for dynamic border
-      : 'border-gray-600'; // Fallback
-    const categoryTextColorClass = category.textColorClass || 'text-text-primary';
+    const categoryBorderColorStyle = category.color_coding
+      ? `border-color: ${category.color_coding};` // Use inline style for dynamic border color
+      : 'border-color: #A1A1AA;'; // Fallback to a default gray
 
     htmlContent += `
-      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 ${categoryBorderColorClass} bg-container-bg flex flex-col mb-4">
-        <h2 class="text-xl md:text-2xl font-bold mb-4 ${categoryTextColorClass}">${category.name}</h2>
+      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 bg-container-bg flex flex-col mb-4" style="${categoryBorderColorStyle}">
+        <h2 class="text-xl md:text-2xl font-bold mb-4 ${category.textColorClass || 'text-text-primary'}">${category.name}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           ${category.items.map(item => {
             const [itemIcon, ...nameParts] = item.name.split(" ");
             const actualItemName = nameParts.join(" ");
             const displayUnit = item.unit_of_measure || '';
 
-            // Initial state: not selected, quantity 0, decrement button hidden
+            // Initial state for all items: unselected, quantity 0, decrement button hidden.
+            // updateItemUIDisplay will set the correct state later.
             return `
               <div id="${item.id}"
-                   class="item-card bg-card-bg p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group"
+                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group"
                    data-item-id="${item.id}"
                    data-item-name="${item.name.replace(/"/g, '&quot;')}"
                    data-increment-step="${item.increment_step_value || 1}"
@@ -350,7 +344,6 @@ document.body.addEventListener('loadPresetContent', (event) => {
                 </div>
                 <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
                     <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable">0 ${displayUnit}</span>
-                    <!-- Decrement button starts hidden -->
                     <button
                         class="decrement-btn bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 transition-opacity duration-200"
                         onclick="decrementItem('${item.id}', event)"
@@ -367,11 +360,9 @@ document.body.addEventListener('loadPresetContent', (event) => {
   });
   categoriesContainer.innerHTML = htmlContent;
 
-  // After rendering all items, ensure their display reflects the initial '0' quantity.
-  // This loop explicitly calls updateItemUIDisplay for every item.
+  // After rendering, ensure the initial state (0 quantity) is reflected for all items
   selectedPreset.categories.forEach(category => {
     category.items.forEach(item => {
-      // updateItemUIDisplay will check selectedItems for actual quantity
       updateItemUIDisplay(item.id);
     });
   });

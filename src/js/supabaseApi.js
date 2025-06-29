@@ -4,7 +4,7 @@ import { showModal } from "./modal.js";
 import { telegramWebApp, isGuestMode } from "./telegram.js";
 import { DEFAULT_PRESET_ID } from "./constants.js";
 import { setUserPresetsCache } from "./state.js";
-import { defaultGroceryData } from "./default-grocery-data.js"; // Correct path as confirmed
+import { defaultGroceryData } from "./default-grocery-data.js";
 
 /**
  * Manages Supabase client initialization and API interactions with Edge Functions.
@@ -60,6 +60,7 @@ export async function authenticateUser() {
       headers['Authorization'] = `TMA ${telegramWebApp.initData}`;
       console.log("Attempting Telegram WebApp authentication via tg-update...");
     } else {
+      headers["Authorization"] = ""; // No TMA header for guest mode
       console.log("Attempting guest mode authentication via tg-update (no TMA header).");
     }
 
@@ -71,7 +72,14 @@ export async function authenticateUser() {
 
     if (error) {
       console.error("Authentication failed during tg-update invocation:", error);
-      throw error;
+      // Do NOT throw here if it's guest mode and we expect auth to fail but still allow partial functionality
+      if (isGuestMode) {
+          console.warn("Authentication failed in guest mode, but proceeding without JWT.");
+          currentAuthToken = null; // Ensure token is null for guest mode
+          currentSupabaseUserId = null;
+          return false; // Indicate auth wasn't successful for full features
+      }
+      throw error; // Re-throw for non-guest mode failures
     }
     if (!data?.jwt || !data?.userId) {
       console.error("tg-update response missing JWT or User ID:", data);
@@ -92,7 +100,18 @@ export async function authenticateUser() {
   }
 }
 
+/**
+ * Generic function to invoke the `db-operations` Edge Function with the authenticated JWT.
+ * This is the central point for all data CRUD calls.
+ * @param {string} operationType - The type of database entity ('preset', 'category', 'item').
+ * @param {string} action - The CRUD action ('read', 'create', 'update', 'delete').
+ * @param {Object} [data={}] - The data payload for create/update operations.
+ * @param {string | null} [id=null] - The ID of the record for update/delete operations.
+ * @returns {Promise<any>} The response data from the `db-operations` Edge Function.
+ * @throws {Error} If `db-operations` invocation fails.
+ */
 async function invokeDbOperation(operationType, action, data = {}, id = null) {
+  // Disallow non-read operations in guest mode (unless explicitly designed)
   if (isGuestMode && (action !== 'read' || operationType !== 'preset')) {
     showModal("Feature Unavailable", "This action requires an authenticated user. Please open in Telegram to link your account or access full features.");
     throw new Error("Action not allowed in guest mode.");
@@ -101,10 +120,15 @@ async function invokeDbOperation(operationType, action, data = {}, id = null) {
   if (!supabaseClient?.functions?.invoke) {
     throw new Error("Supabase functions client is not available.");
   }
+
+  // Attempt to authenticate if no token exists, but allow read operations on presets to proceed
+  // even if auth fails (e.g., in guest mode where DB access isn't required for default data).
   if (!currentAuthToken) {
     const authenticated = await authenticateUser();
-    if (!authenticated) {
-      throw new Error("Not authenticated to perform this operation. Authentication failed.");
+    if (!authenticated && !(isGuestMode && operationType === 'preset' && action === 'read')) {
+        // If authentication failed AND it's not a guest trying to read presets, then throw.
+        // Otherwise, for guest mode reading presets, proceed with null token (backend will filter).
+        throw new Error("Not authenticated to perform this operation. Authentication failed.");
     }
   }
 
@@ -122,7 +146,7 @@ async function invokeDbOperation(operationType, action, data = {}, id = null) {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${currentAuthToken}`,
+          Authorization: currentAuthToken ? `Bearer ${currentAuthToken}` : "", // Send empty if no token
         },
         body: payload,
       }
@@ -143,6 +167,8 @@ async function invokeDbOperation(operationType, action, data = {}, id = null) {
 export async function fetchUserPresets() {
   console.log("Fetching user presets...");
   try {
+    // This will attempt to fetch from DB. If authentication is not successful (e.g. guest mode)
+    // and the backend allows it (or returns empty), the logic will flow to default.
     const data = await invokeDbOperation("preset", "read");
     console.log("Successfully fetched user presets:", data);
 
@@ -156,8 +182,8 @@ export async function fetchUserPresets() {
             id: cat.id,
             name: cat.name,
             color_coding: cat.color_hex,
-            textColorClass: cat.textColorClass, // Ensure these are mapped
-            borderColorClass: cat.borderColorClass, // Ensure these are mapped
+            textColorClass: cat.textColorClass,
+            borderColorClass: cat.borderColorClass,
             items: cat.items.map(item => ({
               id: item.id,
               name: item.name,
@@ -171,12 +197,10 @@ export async function fetchUserPresets() {
       return defaultPresets;
     }
 
-    // If data is fetched, ensure it has necessary styling classes for categories
     const processedData = data.map(preset => ({
         ...preset,
         categories: preset.categories.map(cat => ({
             ...cat,
-            // Ensure these classes are present, fall back to default if not from DB
             textColorClass: cat.textColorClass || `text-text-primary`,
             borderColorClass: cat.borderColorClass || `border-gray-600`,
         }))
@@ -186,6 +210,8 @@ export async function fetchUserPresets() {
     return processedData;
   } catch (error) {
     console.error("Error fetching user presets from DB. Falling back to default data.", error);
+    // If ANY error occurs (even authentication failure from invokeDbOperation),
+    // we still fall back to the default data to ensure the app loads something.
     const defaultPresets = [
         {
           id: defaultGroceryData.id,
