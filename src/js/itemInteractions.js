@@ -28,8 +28,7 @@ export function triggerItemAnimation(itemId, animationType = "flash") {
     setTimeout(() => itemElement.classList.remove("animate-flash"), 300);
   } else if (animationType === "remove") {
     itemElement.classList.add("animate-remove");
-    // Ensure the element is completely removed after animation if needed, or hidden.
-    // For now, just animate, resetSelectedItemsAndUI will handle cleanup.
+    // The resetSelectedItemsAndUI function will handle actual removal/reset after animation
   }
 }
 
@@ -55,19 +54,23 @@ export function updateItemUIDisplay(itemId) {
   }
 
   const quantity = itemData ? itemData.quantity : 0;
-  // Fallback to dataset if itemData isn't available (e.g., during reset for unselected items)
   const unit = itemData ? (itemData.unit || '') : (itemElement.dataset.unitOfMeasure || '');
 
+  // Apply styling based on selection state
   if (quantity > 0) {
-    itemElement.classList.add('selected'); // Add 'selected' class for styling
+    itemElement.classList.add('selected'); // Adds the selected background and border
+    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg'); // Remove unselected background
+    itemElement.classList.add('hover:bg-accent-darker/[0.3]'); // Specific hover for selected state
     quantityDisplay.textContent = `${quantity} ${unit}`.trim();
-    decrementButton.classList.remove('opacity-0'); // Show decrement button
+    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure it's fully visible
     decrementButton.classList.add('opacity-100');
   } else {
-    itemElement.classList.remove('selected'); // Remove 'selected' class
-    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Show "0 unit" as per screenshot for unselected
+    itemElement.classList.remove('selected'); // Remove selected background and border
+    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg'); // Apply unselected background
+    itemElement.classList.remove('hover:bg-accent-darker/[0.3]');
+    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Shows "0 unit" as per screenshot
     decrementButton.classList.remove('opacity-100'); // Hide decrement button
-    decrementButton.classList.add('opacity-0');
+    decrementButton.classList.add('opacity-0', 'group-hover:opacity-100'); // Re-enable group-hover for future selection
   }
 }
 
@@ -116,7 +119,6 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
  * @param {Event} event - The click event to stop propagation.
  */
 export function decrementItem(itemId, event) {
-  // IMPORTANT: Stop propagation to prevent incrementing the item when decrement button is clicked.
   if (event) {
     event.stopPropagation();
   }
@@ -128,7 +130,6 @@ export function decrementItem(itemId, event) {
     currentSelectedItems[itemId].quantity -= step;
 
     const { quantity } = currentSelectedItems[itemId];
-    // Handle floating point precision
     const stepDecimals = (String(step).includes('.')) ? String(step).split(".")[1].length : 0;
     const currentDecimals = (String(quantity).includes('.')) ? String(quantity).split(".")[1].length : 0;
     const precision = Math.max(stepDecimals, currentDecimals);
@@ -165,8 +166,9 @@ export function updateSendButtonVisibilityAndPreview() {
     dom.sendButton.disabled = false;
     const preview = Object.values(selectedItems)
       .map((item) => {
-        const [, ...nameParts] = item.name.split(" "); // Remove icon for preview
-        return `${nameParts.join(" ")}: ${item.quantity} ${item.unit || ''}`;
+        const [itemIcon, ...nameParts] = item.name.split(" "); // Get icon and name parts
+        const itemNameWithoutIcon = nameParts.join(" ");
+        return `${itemNameWithoutIcon}: ${item.quantity} ${item.unit || ''}`;
       })
       .join(", ");
     dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
@@ -312,24 +314,22 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
   let htmlContent = '';
   selectedPreset.categories.forEach(category => {
-    const categoryBorderColorStyle = category.color_coding
-      ? `border-color: ${category.color_coding};` // Use inline style for dynamic border color
-      : 'border-color: #A1A1AA;'; // Fallback to a default gray
+    // Determine the border and text color class names dynamically
+    const categoryBorderClass = category.borderColorClass || 'border-gray-600';
+    const categoryTextColorClass = category.textColorClass || 'text-text-primary';
 
     htmlContent += `
-      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 bg-container-bg flex flex-col mb-4" style="${categoryBorderColorStyle}">
-        <h2 class="text-xl md:text-2xl font-bold mb-4 ${category.textColorClass || 'text-text-primary'}">${category.name}</h2>
+      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 ${categoryBorderClass} bg-container-bg flex flex-col mb-4">
+        <h2 class="text-xl md:text-2xl font-bold mb-4 ${categoryTextColorClass}">${category.name}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           ${category.items.map(item => {
             const [itemIcon, ...nameParts] = item.name.split(" ");
             const actualItemName = nameParts.join(" ");
             const displayUnit = item.unit_of_measure || '';
 
-            // Initial state for all items: unselected, quantity 0, decrement button hidden.
-            // updateItemUIDisplay will set the correct state later.
             return `
               <div id="${item.id}"
-                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group"
+                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg"
                    data-item-id="${item.id}"
                    data-item-name="${item.name.replace(/"/g, '&quot;')}"
                    data-increment-step="${item.increment_step_value || 1}"
@@ -338,14 +338,14 @@ document.body.addEventListener('loadPresetContent', (event) => {
                    ondblclick="decrementItem('${item.id}', event)"
                    title="Click to add, double-click to remove"
               >
-                <div class="flex items-center flex-grow min-w-0">
-                    <span class="text-xl mr-3 non-selectable flex-shrink-0">${itemIcon}</span>
-                    <span class="text-text-primary truncate non-selectable flex-grow">${actualItemName}</span>
+                <div class="flex flex-col items-start flex-grow min-w-0"> <!-- Flex column for name and unit -->
+                    <span class="item-name text-text-primary font-semibold text-sm md:text-base truncate w-full non-selectable">${itemIcon} ${actualItemName}</span>
+                    <span class="item-details text-text-secondary text-xs truncate w-full non-selectable">Unit: ${displayUnit}</span>
                 </div>
                 <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
-                    <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable">0 ${displayUnit}</span>
+                    <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable"></span>
                     <button
-                        class="decrement-btn bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 transition-opacity duration-200"
+                        class="decrement-btn bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                         onclick="decrementItem('${item.id}', event)"
                     >
                         -
@@ -360,10 +360,10 @@ document.body.addEventListener('loadPresetContent', (event) => {
   });
   categoriesContainer.innerHTML = htmlContent;
 
-  // After rendering, ensure the initial state (0 quantity) is reflected for all items
+  // After rendering, initialize the display for each item (showing "0 unit")
   selectedPreset.categories.forEach(category => {
     category.items.forEach(item => {
-      updateItemUIDisplay(item.id);
+      updateItemUIDisplay(item.id); // This will correctly set initial "0 unit" and hide button
     });
   });
 

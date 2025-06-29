@@ -4,107 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuickShare List</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="./style.css" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary-bg': '#0D1117', // Darker background
-                        'container-bg': '#161B22', // Slightly lighter container
-                        'item-bg': '#161B22', // Match container-bg for unselected items
-                        'card-bg': '#1E252E', // This was previously item-bg, keeping it for clarity if different shades are needed.
-                                              // Actual item background will be set directly by classes
-                        'text-primary': '#C9D1D9', // Lighter text
-                        'text-secondary': '#8B949E', // For less prominent text
-                        'accent': '#58A6FF', // Vibrant blue for accents
-                        'accent-darker': '#1F6FEB', // Darker blue for hover
-                        'button-actions': '#238636', // Green for add
-                        'button-remove': '#DA3633', // Red for remove
-                        // Category border colors (from default-grocery-data.js)
-                        'yellow-500': '#F1E05A',
-                        'blue-500': '#60A5FA',
-                        'orange-500': '#F97316',
-                        'green-500': '#22C55E',
-                        'red-500': '#EF4444',
-                        'zinc-500': '#A1A1AA',
-                        'cyan-500': '#22D3EE',
-                        'indigo-500': '#818CF8',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        /* Custom styling for the select to make it look like a title */
-        #preset-selector {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-image: none;
-            padding-right: 2.5rem; /* Space for custom arrow */
-        }
-        .non-selectable {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-        /* Animations for item flashes and removal */
-        @keyframes flash {
-            0% { background-color: transparent; }
-            50% { background-color: rgba(88, 166, 255, 0.2); } /* accent color with opacity */
-            100% { background-color: transparent; }
-        }
-        .animate-flash {
-            animation: flash 0.3s ease-out;
-        }
-        @keyframes remove {
-            0% { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(-100%); opacity: 0; }
-        }
-        .animate-remove {
-            animation: remove 0.3s ease-out forwards;
-        }
-
-        /* Specific styling for item cards */
-        .item-card {
-            background-color: var(--item-bg); /* Unselected background */
-            border: 1px solid transparent; /* Default transparent border */
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        }
-        .item-card:hover {
-             background-color: #1E252E; /* Darker on hover for unselected */
-        }
-        .item-card.selected {
-            background-color: rgba(88, 166, 255, 0.2); /* accent color with opacity */
-            border: 1px solid #58A6FF; /* accent border */
-        }
-        .item-card.selected:hover {
-            background-color: rgba(88, 166, 255, 0.3); /* Slightly darker accent on hover for selected */
-        }
-
-        /* Category Card border (using the color_coding from JS) */
-        .category-card {
-            border-left-width: 4px;
-            border-style: solid;
-            /* The actual border-color is set dynamically via inline style in JS */
-        }
-
-        /* Ensure text color of preset-selector matches screenshot */
-        .preset-title {
-            color: #C9D1D9 !important; /* text-primary */
-            background-color: #58A6FF !important; /* accent */
-            border-radius: 0.5rem; /* rounded-lg */
-        }
-    </style>
+    <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
 </head>
 <body class="bg-primary-bg text-text-primary min-h-screen flex flex-col">
 
@@ -114,7 +17,7 @@
         <!-- Preset Selector Title -->
         <div id="preset-title-dropdown-container" class="relative flex-grow mr-2">
             <select id="preset-selector" name="preset_id"
-                    class="preset-title text-2xl md:text-3xl font-bold text-center w-full p-2 appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate transition-colors duration-200"
+                    class="preset-title text-2xl md:text-3xl font-bold text-center w-full p-2 rounded-lg appearance-none focus:outline-none focus:ring-0 cursor-pointer truncate transition-colors duration-200"
                     onchange="handlePresetSelectorChange(this)"
             >
                 <option value="" disabled selected>Loading Presets...</option>
