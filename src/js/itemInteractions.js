@@ -324,7 +324,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
             return `
               <div id="${item.id}"
-                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg border border-transparent" <!-- Added border-transparent to prevent initial "selected" border -->
+                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg border border-transparent"
                    data-item-id="${item.id}"
                    data-item-name="${item.name.replace(/"/g, '&quot;')}"
                    data-increment-step="${item.increment_step_value || 1}"
