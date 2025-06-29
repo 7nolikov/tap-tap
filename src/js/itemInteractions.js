@@ -28,50 +28,50 @@ export function triggerItemAnimation(itemId, animationType = "flash") {
     setTimeout(() => itemElement.classList.remove("animate-flash"), 300);
   } else if (animationType === "remove") {
     itemElement.classList.add("animate-remove");
+    // Ensure the element is completely removed after animation if needed, or hidden.
+    // For now, just animate, resetSelectedItemsAndUI will handle cleanup.
   }
 }
 
 /**
  * Updates the visual display of a single item based on its selected quantity.
- * This function will modify existing elements, not recreate them.
+ * This function modifies existing elements within the item card.
  * @param {string} itemId - The unique ID of the item's DOM element.
  */
 export function updateItemUIDisplay(itemId) {
   const itemElement = document.getElementById(itemId);
   if (!itemElement) return;
 
-  // Remove animation classes if they exist from previous interactions
+  // Remove any lingering animation classes
   itemElement.classList.remove("animate-flash", "animate-remove");
 
   const itemData = selectedItems[itemId];
-  const quantityDisplay = itemElement.querySelector(".item-quantity");
-  const decrementButton = itemElement.querySelector(".decrement-btn");
+  const quantityDisplay = itemElement.querySelector('.item-quantity');
+  const decrementButton = itemElement.querySelector('.decrement-btn');
 
   if (!quantityDisplay || !decrementButton) {
-    console.warn(
-      `Could not find quantity display or decrement button for item ${itemId}.`
-    );
-    return; // Essential elements missing, cannot update UI
+      console.warn(`Could not find quantity display or decrement button for item ${itemId}.`);
+      return;
   }
 
   // Determine current quantity and unit for display
   const quantity = itemData ? itemData.quantity : 0;
-  const unit = itemData
-    ? itemData.unit || ""
-    : itemElement.dataset.unitOfMeasure || ""; // Fallback to dataset
+  // Fallback to dataset if itemData isn't available (e.g., during reset for unselected items)
+  const unit = itemData ? (itemData.unit || '') : (itemElement.dataset.unitOfMeasure || '');
 
   if (quantity > 0) {
-    itemElement.classList.add("selected"); // Add 'selected' class for styling
-    quantityDisplay.textContent = `${quantity} ${unit}`;
-    decrementButton.classList.remove("opacity-0"); // Show decrement button
-    decrementButton.classList.add("opacity-100");
+    itemElement.classList.add('selected'); // Add 'selected' class for styling
+    quantityDisplay.textContent = `${quantity} ${unit}`.trim();
+    decrementButton.classList.remove('opacity-0'); // Show decrement button
+    decrementButton.classList.add('opacity-100');
   } else {
-    itemElement.classList.remove("selected"); // Remove 'selected' class
-    quantityDisplay.textContent = ""; // Clear quantity display
-    decrementButton.classList.remove("opacity-100"); // Hide decrement button
-    decrementButton.classList.add("opacity-0");
+    itemElement.classList.remove('selected'); // Remove 'selected' class
+    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Show "0 unit" as per screenshot
+    decrementButton.classList.remove('opacity-100'); // Hide decrement button
+    decrementButton.classList.add('opacity-0');
   }
 }
+
 
 /**
  * Increments an item's quantity or selects it if not already selected.
@@ -81,20 +81,14 @@ export function updateItemUIDisplay(itemId) {
  * @param {number} [incrementStep=1] - The value by which to increment the quantity.
  * @param {string} [unitOfMeasure=''] - The unit of measure (e.g., "pcs", "kg").
  */
-export function incrementOrSelectItem(
-  itemElement,
-  itemId,
-  itemName,
-  incrementStep = 1,
-  unitOfMeasure = ""
-) {
+export function incrementOrSelectItem(itemElement, itemId, itemName, incrementStep = 1, unitOfMeasure = '') {
   const step = Number(incrementStep) || 1;
 
   let currentSelectedItems = { ...selectedItems };
   if (!currentSelectedItems[itemId]) {
     currentSelectedItems[itemId] = {
       name: itemName,
-      quantity: 0,
+      quantity: 0, // Start from 0, then add step
       unit: unitOfMeasure,
       incrementStep: step,
     };
@@ -102,8 +96,9 @@ export function incrementOrSelectItem(
   currentSelectedItems[itemId].quantity += step;
 
   const { quantity } = currentSelectedItems[itemId];
-  const stepDecimals = (String(step).split(".")[1] || "").length;
-  const currentDecimals = (String(quantity).split(".")[1] || "").length;
+  // Handle floating point precision
+  const stepDecimals = (String(step).includes('.')) ? String(step).split(".")[1].length : 0;
+  const currentDecimals = (String(quantity).includes('.')) ? String(quantity).split(".")[1].length : 0;
   const precision = Math.max(stepDecimals, currentDecimals);
   currentSelectedItems[itemId].quantity = parseFloat(
     quantity.toFixed(precision)
@@ -111,8 +106,7 @@ export function incrementOrSelectItem(
 
   setSelectedItems(currentSelectedItems);
 
-  // Update the individual item's UI display by its ID
-  updateItemUIDisplay(itemId);
+  updateItemUIDisplay(itemId); // Only needs item ID now
   updateSendButtonVisibilityAndPreview();
   triggerItemAnimation(itemId, "flash");
 }
@@ -120,8 +114,14 @@ export function incrementOrSelectItem(
 /**
  * Decrements an item's quantity. Removes item if quantity drops to 0 or less.
  * @param {string} itemId - The unique ID of the item.
+ * @param {Event} event - The click event to stop propagation.
  */
-export function decrementItem(itemId) {
+export function decrementItem(itemId, event) {
+  // IMPORTANT: Stop propagation to prevent incrementing the item when decrement button is clicked.
+  if (event) {
+    event.stopPropagation();
+  }
+
   let currentSelectedItems = { ...selectedItems };
 
   if (currentSelectedItems[itemId]) {
@@ -129,8 +129,9 @@ export function decrementItem(itemId) {
     currentSelectedItems[itemId].quantity -= step;
 
     const { quantity } = currentSelectedItems[itemId];
-    const stepDecimals = (String(step).split(".")[1] || "").length;
-    const currentDecimals = (String(quantity).split(".")[1] || "").length;
+    // Handle floating point precision
+    const stepDecimals = (String(step).includes('.')) ? String(step).split(".")[1].length : 0;
+    const currentDecimals = (String(quantity).includes('.')) ? String(quantity).split(".")[1].length : 0;
     const precision = Math.max(stepDecimals, currentDecimals);
     currentSelectedItems[itemId].quantity = parseFloat(
       quantity.toFixed(precision)
@@ -141,7 +142,7 @@ export function decrementItem(itemId) {
       setTimeout(() => {
         delete currentSelectedItems[itemId];
         setSelectedItems(currentSelectedItems);
-        updateItemUIDisplay(itemId); // Clear display for this item
+        updateItemUIDisplay(itemId); // Update UI to show 0/unselected state
         updateSendButtonVisibilityAndPreview();
       }, 300); // Match animation duration
     } else {
@@ -166,7 +167,7 @@ export function updateSendButtonVisibilityAndPreview() {
     const preview = Object.values(selectedItems)
       .map((item) => {
         const [, ...nameParts] = item.name.split(" "); // Remove icon for preview
-        return `${nameParts.join(" ")}: ${item.quantity} ${item.unit || ""}`;
+        return `${nameParts.join(" ")}: ${item.quantity} ${item.unit || ''}`;
       })
       .join(", ");
     dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
@@ -182,20 +183,19 @@ export function updateSendButtonVisibilityAndPreview() {
  * This is called when a new preset is loaded or edited.
  */
 export function resetSelectedItemsAndUI() {
-  // Get a copy of selectedItems keys BEFORE clearing setSelectedItems,
-  // as the loop needs to iterate over the items that *were* selected.
+  // Get IDs of items that were selected BEFORE clearing the state
   const previouslySelectedIds = Object.keys(selectedItems);
 
-  setSelectedItems({}); // Reset to an empty object via setter
+  setSelectedItems({}); // Clear the selectedItems state
 
-  // Now, update the UI for each item that was previously selected
-  // to remove the 'selected' class and clear its quantity display.
-  previouslySelectedIds.forEach((itemId) => {
-    updateItemUIDisplay(itemId); // Call with ID to reset its visual state
+  // Update the UI for each item that *was* selected to reset its display
+  previouslySelectedIds.forEach(itemId => {
+    updateItemUIDisplay(itemId); // This will set it to unselected/0 quantity
   });
 
   updateSendButtonVisibilityAndPreview();
 }
+
 
 /**
  * Formats the selected items into a string suitable for Telegram message.
@@ -203,48 +203,43 @@ export function resetSelectedItemsAndUI() {
  * @returns {string} Formatted string.
  */
 export function formatListForTelegram(items) {
-  const listName = currentActivePreset.name || "QuickShare List";
+  const listName = currentActivePreset.name || 'QuickShare List';
   let message = `*QuickShare List: ${listName}*\n\n`;
 
   const allPresets = getPresetsCache();
-  const currentPresetData = allPresets.find(
-    (p) => p.id === currentActivePreset.id
-  );
+  const currentPresetData = allPresets.find(p => p.id === currentActivePreset.id);
 
   if (currentPresetData && currentPresetData.categories) {
     const categoriesMap = new Map();
 
-    currentPresetData.categories.forEach((category) => {
-      const selectedItemsInCategory = category.items
-        .filter((item) => items[item.id])
-        .map((item) => items[item.id]);
+    currentPresetData.categories.forEach(category => {
+      // Filter category.items to get only those that are currently selected
+      const selectedItemsInCategory = category.items.filter(item => items[item.id]);
 
       if (selectedItemsInCategory.length > 0) {
         categoriesMap.set(category.id, {
           name: category.name,
-          items: selectedItemsInCategory,
+          items: selectedItemsInCategory.map(item => items[item.id]) // Get the selected quantity/unit
         });
       }
     });
 
-    categoriesMap.forEach((categoryData) => {
+    categoriesMap.forEach(categoryData => {
       message += `*${categoryData.name}:*\n`;
-      categoryData.items.forEach((item) => {
+      categoryData.items.forEach(item => {
         const [, ...nameParts] = item.name.split(" ");
         const itemNameWithoutIcon = nameParts.join(" ");
-        message += `- ${itemNameWithoutIcon}: ${item.quantity} ${
-          item.unit || ""
-        }\n`;
+        message += `- ${itemNameWithoutIcon}: ${item.quantity} ${item.unit || ''}\n`;
       });
-      message += "\n";
+      message += '\n';
     });
+
   } else {
+    // Fallback if preset data or categories are missing/malformed
     Object.values(items).forEach((item) => {
       const [, ...nameParts] = item.name.split(" ");
       const itemNameWithoutIcon = nameParts.join(" ");
-      message += `- ${itemNameWithoutIcon}: ${item.quantity} ${
-        item.unit || ""
-      }\n`;
+      message += `- ${itemNameWithoutIcon}: ${item.quantity} ${item.unit || ''}\n`;
     });
   }
 
@@ -280,9 +275,7 @@ export function sendList() {
   const message = formatListForTelegram(selectedItems);
 
   if (telegramWebApp.isClosed) {
-    telegramWebApp.showAlert(
-      "Telegram Web App is closed. Cannot send message."
-    );
+    telegramWebApp.showAlert('Telegram Web App is closed. Cannot send message.');
     return;
   }
 
@@ -292,39 +285,29 @@ export function sendList() {
     telegramWebApp.close();
   } else if (telegramWebApp.openTelegramLink) {
     const encodedMessage = encodeURIComponent(message);
-    telegramWebApp.openTelegramLink(
-      `https://t.me/share/url?url=&text=${encodedMessage}`
-    );
+    telegramWebApp.openTelegramLink(`https://t.me/share/url?url=&text=${encodedMessage}`);
   } else {
-    telegramWebApp.showAlert(
-      "Cannot send message. Telegram WebApp features not available."
-    );
+    telegramWebApp.showAlert("Cannot send message. Telegram WebApp features not available.");
   }
 
   resetSelectedItemsAndUI();
 }
 
 // --- HTMX Rendering Function (PRIMARY RENDERING MECHANISM) ---
-document.body.addEventListener("loadPresetContent", (event) => {
+document.body.addEventListener('loadPresetContent', (event) => {
   const presetId = event.detail.presetId;
   const allPresets = getPresetsCache();
-  const selectedPreset = allPresets.find((p) => p.id === presetId);
+  const selectedPreset = allPresets.find(p => p.id === presetId);
 
   const categoriesContainer = dom.categoriesContainer;
   if (!categoriesContainer) {
-    console.error(
-      "Categories container not found for loadPresetContent event."
-    );
+    console.error("Categories container not found for loadPresetContent event.");
     return;
   }
 
   resetSelectedItemsAndUI(); // Always clear selections when a new preset is loaded
 
-  if (
-    !selectedPreset ||
-    !selectedPreset.categories ||
-    selectedPreset.categories.length === 0
-  ) {
+  if (!selectedPreset || !selectedPreset.categories || selectedPreset.categories.length === 0) {
     categoriesContainer.innerHTML = `<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">No items defined for this preset.</p>`;
     dom.categoriesPlaceholder?.classList.remove("hidden");
     return;
@@ -332,70 +315,65 @@ document.body.addEventListener("loadPresetContent", (event) => {
 
   dom.categoriesPlaceholder?.classList.add("hidden");
 
-  let htmlContent = "";
-  selectedPreset.categories.forEach((category) => {
-    htmlContent += `
-      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 ${
-        category.borderColorClass || "border-gray-500"
-      } bg-container-bg flex flex-col mb-4">
-        <h2 class="text-xl md:text-2xl font-bold mb-4 ${
-          category.textColorClass || "text-text-primary"
-        }">${category.name}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          ${category.items
-            .map((item) => {
-              const [itemIcon, ...nameParts] = item.name.split(" ");
-              const actualItemName = nameParts.join(" ");
-              const displayUnit = item.unit_of_measure || "";
+  let htmlContent = '';
+  selectedPreset.categories.forEach(category => {
+    // Determine the border color for the category card
+    const categoryBorderColorClass = category.color_coding
+      ? `border-[${category.color_coding}]` // Use direct color code for dynamic border
+      : 'border-gray-600'; // Fallback
+    const categoryTextColorClass = category.textColorClass || 'text-text-primary';
 
-              return `
+    htmlContent += `
+      <div class="category-card p-4 rounded-xl shadow-lg border-l-4 ${categoryBorderColorClass} bg-container-bg flex flex-col mb-4">
+        <h2 class="text-xl md:text-2xl font-bold mb-4 ${categoryTextColorClass}">${category.name}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          ${category.items.map(item => {
+            const [itemIcon, ...nameParts] = item.name.split(" ");
+            const actualItemName = nameParts.join(" ");
+            const displayUnit = item.unit_of_measure || '';
+
+            // Initial state: not selected, quantity 0, decrement button hidden
+            return `
               <div id="${item.id}"
-                   class="item-card bg-card-bg p-3 rounded-lg text-center flex flex-col justify-between items-center transition-all duration-200 cursor-pointer hover:bg-hover-bg relative overflow-hidden group"
+                   class="item-card bg-card-bg p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group"
                    data-item-id="${item.id}"
-                   data-item-name="${item.name.replace(/"/g, "&quot;")}"
+                   data-item-name="${item.name.replace(/"/g, '&quot;')}"
                    data-increment-step="${item.increment_step_value || 1}"
-                   data-unit-of-measure="${item.unit_of_measure || ""}"
-                   onclick="incrementOrSelectItem(this, '${
-                     item.id
-                   }', '${item.name.replace(/'/g, "\\'")}', ${
-                item.increment_step_value || 1
-              }, '${item.unit_of_measure.replace(/'/g, "\\'") || ""}')"
+                   data-unit-of-measure="${item.unit_of_measure || ''}"
+                   onclick="incrementOrSelectItem(this, '${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.increment_step_value || 1}, '${item.unit_of_measure.replace(/'/g, "\\'") || ''}')"
                    ondblclick="decrementItem('${item.id}', event)"
                    title="Click to add, double-click to remove"
               >
-                <div class="item-name text-text-primary font-semibold text-sm md:text-base mb-1 truncate w-full">${itemIcon} ${actualItemName}</div>
-                <div class="item-details text-gray-400 text-xs truncate w-full">${
-                  item.description ||
-                  (displayUnit ? `Unit: ${displayUnit}` : "")
-                }</div>
-                <div class="item-quantity text-accent font-bold text-lg md:text-xl mt-2"></div>
-                <!-- Decrement button -->
-                <button
-                    class="decrement-btn absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                    onclick="event.stopPropagation(); decrementItem('${
-                      item.id
-                    }')"
-                >
-                    -
-                </button>
+                <div class="flex items-center flex-grow min-w-0">
+                    <span class="text-xl mr-3 non-selectable flex-shrink-0">${itemIcon}</span>
+                    <span class="text-text-primary truncate non-selectable flex-grow">${actualItemName}</span>
+                </div>
+                <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
+                    <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable">0 ${displayUnit}</span>
+                    <!-- Decrement button starts hidden -->
+                    <button
+                        class="decrement-btn bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 transition-opacity duration-200"
+                        onclick="decrementItem('${item.id}', event)"
+                    >
+                        -
+                    </button>
+                </div>
               </div>
             `;
-            })
-            .join("")}
+          }).join('')}
         </div>
       </div>
     `;
   });
   categoriesContainer.innerHTML = htmlContent;
 
-  // After initial render, call updateItemUIDisplay for any items that might already be selected
-  // (e.g., if we kept selections across preset loads, or for debugging)
-  // Since we call resetSelectedItemsAndUI at the start, this loop will effectively do nothing
-  // unless you modify resetSelectedItemsAndUI's behavior.
-  Object.keys(selectedItems).forEach((id) => {
-    // Find the actual item data to ensure updateItemUIDisplay has the context if needed.
-    // However, updateItemUIDisplay should now only need the ID.
-    updateItemUIDisplay(id);
+  // After rendering all items, ensure their display reflects the initial '0' quantity.
+  // This loop explicitly calls updateItemUIDisplay for every item.
+  selectedPreset.categories.forEach(category => {
+    category.items.forEach(item => {
+      // updateItemUIDisplay will check selectedItems for actual quantity
+      updateItemUIDisplay(item.id);
+    });
   });
 
   updateSendButtonVisibilityAndPreview();

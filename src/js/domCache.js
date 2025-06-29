@@ -1,3 +1,4 @@
+// src/js/domCache.js
 /**
  * Caches frequently accessed DOM elements for performance.
  * Also handles initial setup of modal close listener.

@@ -1,4 +1,4 @@
-// state.js
+// src/js/state.js
 /**
  * Manages global application state.
  * Using `let` for direct export of mutable state, or functions for controlled updates.

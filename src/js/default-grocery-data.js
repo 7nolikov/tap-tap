@@ -1,3 +1,5 @@
+// src/js/default-grocery-data.js
+
 export const defaultGroceryData = {
     id: 'default_grocery_list_001', // Unique ID for this default preset
     name: 'Grocery List', // Display name
@@ -7,8 +9,8 @@ export const defaultGroceryData = {
             id: 'cat_bakery_001',
             name: 'Bakery',
             color_hex: '#F1E05A', // Yellow
-            textColorClass: 'text-yellow-400', // Tailwind class for the title
-            borderColorClass: 'border-yellow-500', // Tailwind class for the border
+            textColorClass: 'text-yellow-400',
+            borderColorClass: 'border-yellow-500',
             items: [
                 { id: 'item_bread_001', name: '🍞 Bread', unit: 'loaf', incrementStep: 1 },
                 { id: 'item_bagels_002', name: '🥯 Bagels', unit: 'pack', incrementStep: 1 },
@@ -24,7 +26,7 @@ export const defaultGroceryData = {
             items: [
                 { id: 'item_milk_004', name: '🥛 Milk', unit: 'liter', incrementStep: 1 },
                 { id: 'item_cheese_005', name: '🧀 Cheese', unit: 'g', incrementStep: 50 },
-                { id: 'item_eggs_006', name: '🥚 Eggs', unit: 'pcs', incrementStep: 6 }, // e.g. half-dozen
+                { id: 'item_eggs_006', name: '🥚 Eggs', unit: 'pcs', incrementStep: 6 },
                 { id: 'item_yogurt_007', name: '🍦 Yogurt', unit: 'pot', incrementStep: 1 },
                 { id: 'item_butter_008', name: '🧈 Butter', unit: 'pack', incrementStep: 1 }
             ]
@@ -50,7 +52,7 @@ export const defaultGroceryData = {
             borderColorClass: 'border-green-500',
             items: [
                 { id: 'item_lettuce_013', name: '🥬 Lettuce', unit: 'head', incrementStep: 1 },
-                { id: 'item_tomatoes_014', name: '🍅 Tomatoes', unit: 'kg', incrementStep: 0.5 }, // Example: 0.5 kg steps
+                { id: 'item_tomatoes_014', name: '🍅 Tomatoes', unit: 'kg', incrementStep: 0.5 },
                 { id: 'item_onions_015', name: '🧅 Onions', unit: 'kg', incrementStep: 0.5 },
                 { id: 'item_potatoes_016', name: '🥔 Potatoes', unit: 'kg', incrementStep: 1 },
                 { id: 'item_carrots_017', name: '🥕 Carrots', unit: 'kg', incrementStep: 0.5 },

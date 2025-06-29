@@ -7,12 +7,15 @@ import {
   handleEditPreset,
   handleDeletePreset,
   handlePresetSelectorChange,
+  updatePresetCrudButtons // Import for direct access if needed, or if event listener doesn't cover it
 } from "./presetManager.js";
 import {
   sendList,
   incrementOrSelectItem,
   decrementItem,
+  resetSelectedItemsAndUI // Ensure this is accessible if needed globally or by other modules
 } from "./itemInteractions.js";
+import { hideModal } from "./modal.js"; // Import hideModal directly for initial setup
 
 /**
  * Main application initialization logic.
@@ -26,12 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("DOM fully loaded and parsed. Initializing app.");
 
   // Initialize core components
-  import("./modal.js")
-    .then(({ hideModal }) => {
-      cacheAndSetupModalElements(hideModal);
-    })
-    .catch((error) => console.error("Error importing modal functions:", error));
-
+  cacheAndSetupModalElements(hideModal); // Pass hideModal from modal.js
   initializeTelegramWebApp(); // Sets telegramWebApp and isGuestMode
 
   // Assign event listeners for CRUD buttons
@@ -40,7 +38,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   dom.deletePresetBtn?.addEventListener("click", handleDeletePreset);
 
   // Assign event listener for the preset selector
-  // The handlePresetSelectorChange function takes the select element as an argument
   dom.presetSelector?.addEventListener("change", (event) =>
     handlePresetSelectorChange(event.target)
   );
@@ -50,33 +47,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Assign send button listener
   dom.sendButton?.addEventListener("click", sendList);
 
+  // General modal close listeners for escape key and backdrop click
+  if (dom.genericModal) {
+    dom.genericModal.addEventListener('click', (event) => {
+        if (event.target === dom.genericModal) { // Only close if clicking the backdrop
+            hideModal();
+            // Reset selector to last valid preset on modal close if needed
+            if (dom.presetSelector && dom.presetSelector.dataset.lastValidPresetId) {
+                dom.presetSelector.value = dom.presetSelector.dataset.lastValidPresetId;
+            }
+        }
+    });
+  }
+  document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dom.genericModal && !dom.genericModal.classList.contains('hidden')) {
+          hideModal();
+          // Reset selector to last valid preset on modal close if needed
+          if (dom.presetSelector && dom.presetSelector.dataset.lastValidPresetId) {
+              dom.presetSelector.value = dom.presetSelector.dataset.lastValidPresetId;
+          }
+      }
+  });
+
+
   console.log("App.js initialized.");
 });
 
 // --- Expose necessary functions globally if HTML uses onclick directly ---
-// This is typically needed if your HTML has `onclick="someFunction()"` attributes.
-// For modern HTMX/JS interaction, using `addEventListener` from JavaScript is generally preferred.
-window.handlePresetSelectorChange = handlePresetSelectorChange; // Used by presetSelector onchange
-window.sendList = sendList; // Used by sendButton onclick
-window.incrementOrSelectItem = incrementOrSelectItem; // Used by dynamically created item divs onclick
-window.decrementItem = decrementItem; // Used by dynamically created buttons onclick
+// These are needed because HTML attributes (`onclick`, `onchange`) do not understand ES Module imports.
+window.handlePresetSelectorChange = handlePresetSelectorChange;
+window.sendList = sendList;
+window.incrementOrSelectItem = incrementOrSelectItem;
+window.decrementItem = decrementItem;
+// Expose resetSelectedItemsAndUI for HTMX after-settle if it needs to be called globally
+window.resetSelectedItemsAndUI = resetSelectedItemsAndUI;
 
-// You'll also need to ensure that `window.defaultGroceryData` is defined globally
-// (e.g., in an inline script in your HTML or another non-module script loaded before `app.js`).
-// Similarly, `htmx` and `Alpine` are assumed to be global (loaded via <script> tags before app.js).
 
-// --- HTMX and Alpine.js Integrations ---
-// Example of how you might use HTMX events with JavaScript
-document.body.addEventListener("htmx:afterSwap", function (event) {
-  console.log("HTMX content swapped:", event.detail.target);
-  // If HTMX loads new content that contains items, you might need to re-attach
-  // click handlers or re-run parts of renderPresetFromLocalData for existing items
-  // to ensure their interactive state is correct. This depends on HTMX's behavior.
-});
-
-// Alpine.js integration: Keep Alpine's init hook as is
+// --- Alpine.js Integrations ---
+// Assuming Alpine.js is loaded via a <script defer src="...cdn.min.js"> tag
 document.addEventListener("alpine:init", () => {
-  // You can define Alpine.js reactive data and methods here
   Alpine.data("appData", () => ({
     init() {
       console.log("Alpine.js initialized with appData.");

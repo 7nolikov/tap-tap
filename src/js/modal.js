@@ -1,4 +1,5 @@
-import { dom } from "./domCache.js"; // Import cached DOM elements
+// src/js/modal.js
+import { dom } from "./domCache.js";
 
 /**
  * Controls the display and content of a generic modal dialog.
@@ -27,8 +28,7 @@ export function showModal(title, contentHTML, footerButtonsConfig = []) {
       btnConfig.class || "bg-gray-600 hover:bg-gray-500 text-text-primary"
     }`;
     button.onclick = () => {
-      // Using onclick for dynamic elements for simplicity
-      btnConfig.onClick?.(); // Call onClick if it exists
+      btnConfig.onClick?.();
       if (btnConfig.hideOnClick !== false) hideModal();
     };
     dom.genericModalFooter.appendChild(button);
