@@ -329,7 +329,6 @@ document.body.addEventListener('loadPresetContent', (event) => {
               >
                 <div class="flex flex-col items-start flex-grow min-w-0">
                     <span class="item-name text-text-primary font-semibold text-sm md:text-base truncate w-full non-selectable">${itemIcon} ${actualItemName}</span>
-//                    <span class="item-details text-text-secondary text-xs truncate w-full non-selectable">${item.description ? item.description : ''}</span> <!-- Removed 'Unit: ' prefix -->
                 </div>
                 <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
                     <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable"></span>
