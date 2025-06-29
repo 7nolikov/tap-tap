@@ -9,14 +9,15 @@ module.exports = {
       colors: {
         'primary-bg': '#0D1117',
         'container-bg': '#161B22',
-        'item-bg': '#161B22',
-        'card-bg': '#1E252E',
+        'item-bg': '#161B22', // Unselected item card background, matching container-bg
+        'card-bg': '#1E252E', // Used for item card hover background
         'text-primary': '#C9D1D9',
         'text-secondary': '#8B949E',
         'accent': '#58A6FF',
         'accent-darker': '#1F6FEB',
         'button-actions': '#238636',
-        'button-remove': '#DA3633',
+        'button-remove': '#DA3633', // Red for minus button
+        // Category border and text colors - MUST MATCH default-grocery-data.js values EXACTLY
         'yellow-400': '#F1E05A',
         'yellow-500': '#F1E05A',
         'blue-400': '#60A5FA',
@@ -37,6 +38,7 @@ module.exports = {
     },
   },
   safelist: [
+    // Ensure these exact classes are generated, as they are dynamic in JS
     {
       pattern: /(border|text)-(yellow|blue|orange|green|red|zinc|cyan|indigo)-(400|500)/,
       variants: ['hover', 'focus'],
@@ -44,14 +46,11 @@ module.exports = {
     'bg-accent',
     'hover:bg-accent-darker',
     'text-white',
-    'bg-button-remove',
-    'hover:bg-red-700',
-    'bg-accent/20',
-    'border-accent',
-    'hover:bg-accent-darker/[0.3]',
-    'opacity-0',
-    'opacity-100',
-    'group-hover:opacity-100',
+    'bg-button-remove', // Explicitly safelist for minus button and delete preset
+    'hover:bg-red-700', // Explicitly safelist for minus button and delete preset
+    'opacity-0', // For initially hidden decrement button
+    'opacity-100', // For visible decrement button
+    'group-hover:opacity-100', // For decrement button hover
   ],
   plugins: [],
 }

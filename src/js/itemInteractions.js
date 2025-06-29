@@ -35,9 +35,9 @@ export function triggerItemAnimation(itemId, animationType = "flash") {
  * Updates the visual display of a single item based on its selected quantity.
  * This function modifies existing elements within the item card.
  *
- * IMPORTANT: This function no longer applies 'selected' class or changes
- * background/border colors based on quantity. Item cards will maintain their
- * base 'bg-item-bg' and 'hover:bg-card-bg' appearance.
+ * This function is now responsible ONLY for updating the quantity text and
+ * the visibility of the decrement button, without affecting the item card's
+ * background or border.
  *
  * @param {string} itemId - The unique ID of the item's DOM element.
  */
@@ -60,6 +60,7 @@ export function updateItemUIDisplay(itemId) {
   const quantity = itemData ? itemData.quantity : 0;
   const unit = itemData ? (itemData.unit || '') : (itemElement.dataset.unitOfMeasure || '');
 
+  // Update quantity text
   quantityDisplay.textContent = `${quantity} ${unit}`.trim();
 
   // Control visibility of decrement button based on quantity
@@ -117,7 +118,7 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
  */
 export function decrementItem(itemId, event) {
   if (event) {
-    event.stopPropagation(); // Prevents the parent item card's onclick (increment) from firing
+    event.stopPropagation();
   }
 
   let currentSelectedItems = { ...selectedItems };
@@ -163,7 +164,7 @@ export function updateSendButtonVisibilityAndPreview() {
     dom.sendButton.disabled = false;
     const preview = Object.values(selectedItems)
       .map((item) => {
-        return `${item.name}: ${item.quantity} ${item.unit || ''}`; // item.name already includes emoji
+        return `${item.name}: ${item.quantity} ${item.unit || ''}`; // item.name includes emoji
       })
       .join(", ");
     dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
@@ -323,7 +324,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
             return `
               <div id="${item.id}"
-                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg"
+                   class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg border border-transparent" <!-- Added border-transparent to prevent initial "selected" border -->
                    data-item-id="${item.id}"
                    data-item-name="${item.name.replace(/"/g, '&quot;')}"
                    data-increment-step="${item.increment_step_value || 1}"
