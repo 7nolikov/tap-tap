@@ -28,7 +28,6 @@ export function triggerItemAnimation(itemId, animationType = "flash") {
     setTimeout(() => itemElement.classList.remove("animate-flash"), 300);
   } else if (animationType === "remove") {
     itemElement.classList.add("animate-remove");
-    // The resetSelectedItemsAndUI function will handle actual removal/reset after animation
   }
 }
 
@@ -59,14 +58,18 @@ export function updateItemUIDisplay(itemId) {
   // Apply styling based on selection state
   if (quantity > 0) {
     itemElement.classList.add('selected'); // Adds the selected background and border (defined in style.css)
-    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg'); // Remove unselected background classes
-    itemElement.classList.add('bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]'); // Add selected background, border, and hover
+    // Ensure all unselected state classes are removed
+    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg');
+    // Add selected state classes
+    itemElement.classList.add('bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]');
+
     quantityDisplay.textContent = `${quantity} ${unit}`.trim();
-    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure it's fully visible, remove group-hover dependence
+    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure visible
     decrementButton.classList.add('opacity-100');
   } else {
     itemElement.classList.remove('selected', 'bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]'); // Remove selected classes
-    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg'); // Re-apply unselected background and hover
+    // Re-apply unselected state classes
+    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg');
     quantityDisplay.textContent = `0 ${unit}`.trim(); // Shows "0 unit" as per screenshot for unselected
     decrementButton.classList.remove('opacity-100'); // Hide decrement button
     decrementButton.classList.add('opacity-0', 'group-hover:opacity-100'); // Re-enable group-hover for future selection
@@ -89,7 +92,7 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
   if (!currentSelectedItems[itemId]) {
     currentSelectedItems[itemId] = {
       name: itemName,
-      quantity: 0, // Start from 0, then add step
+      quantity: 0,
       unit: unitOfMeasure,
       incrementStep: step,
     };
@@ -97,7 +100,6 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
   currentSelectedItems[itemId].quantity += step;
 
   const { quantity } = currentSelectedItems[itemId];
-  // Handle floating point precision
   const stepDecimals = (String(step).includes('.')) ? String(step).split(".")[1].length : 0;
   const currentDecimals = (String(quantity).includes('.')) ? String(quantity).split(".")[1].length : 0;
   const precision = Math.max(stepDecimals, currentDecimals);
@@ -107,7 +109,7 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
 
   setSelectedItems(currentSelectedItems);
 
-  updateItemUIDisplay(itemId); // Only needs item ID now
+  updateItemUIDisplay(itemId);
   updateSendButtonVisibilityAndPreview();
   triggerItemAnimation(itemId, "flash");
 }
@@ -165,9 +167,8 @@ export function updateSendButtonVisibilityAndPreview() {
     dom.sendButton.disabled = false;
     const preview = Object.values(selectedItems)
       .map((item) => {
-        const [itemIcon, ...nameParts] = item.name.split(" ");
-        const itemNameWithoutIcon = nameParts.join(" ");
-        return `${itemNameWithoutIcon}: ${item.quantity} ${item.unit || ''}`;
+        // Include the full item.name which contains the emoji
+        return `${item.name}: ${item.quantity} ${item.unit || ''}`;
       })
       .join(", ");
     dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
@@ -313,7 +314,6 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
   let htmlContent = '';
   selectedPreset.categories.forEach(category => {
-    // Dynamically apply border and text color classes based on data
     const categoryBorderClass = category.borderColorClass || 'border-gray-600';
     const categoryTextColorClass = category.textColorClass || 'text-text-primary';
 
@@ -326,8 +326,6 @@ document.body.addEventListener('loadPresetContent', (event) => {
             const actualItemName = nameParts.join(" ");
             const displayUnit = item.unit_of_measure || '';
 
-            // Initial state for all items: unselected, quantity 0, decrement button hidden.
-            // Classes for unselected state directly applied.
             return `
               <div id="${item.id}"
                    class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg"
@@ -336,8 +334,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
                    data-increment-step="${item.increment_step_value || 1}"
                    data-unit-of-measure="${item.unit_of_measure || ''}"
                    onclick="incrementOrSelectItem(this, '${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.increment_step_value || 1}, '${item.unit_of_measure.replace(/'/g, "\\'") || ''}')"
-                   ondblclick="decrementItem('${item.id}', event)"
-                   title="Click to add, double-click to remove"
+                   title="Click to add"
               >
                 <div class="flex flex-col items-start flex-grow min-w-0">
                     <span class="item-name text-text-primary font-semibold text-sm md:text-base truncate w-full non-selectable">${itemIcon} ${actualItemName}</span>
@@ -346,7 +343,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
                 <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
                     <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable"></span>
                     <button
-                        class="decrement-btn bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        class="decrement-btn bg-accent hover:bg-accent-darker text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                         onclick="decrementItem('${item.id}', event)"
                     >
                         -
@@ -361,10 +358,9 @@ document.body.addEventListener('loadPresetContent', (event) => {
   });
   categoriesContainer.innerHTML = htmlContent;
 
-  // After rendering, initialize the display for each item (showing "0 unit")
   selectedPreset.categories.forEach(category => {
     category.items.forEach(item => {
-      updateItemUIDisplay(item.id); // This will correctly set initial "0 unit" and hide button
+      updateItemUIDisplay(item.id);
     });
   });
 
