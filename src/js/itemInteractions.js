@@ -34,6 +34,11 @@ export function triggerItemAnimation(itemId, animationType = "flash") {
 /**
  * Updates the visual display of a single item based on its selected quantity.
  * This function modifies existing elements within the item card.
+ *
+ * IMPORTANT: This function no longer applies 'selected' class or changes
+ * background/border colors based on quantity. Item cards will maintain their
+ * base 'bg-item-bg' and 'hover:bg-card-bg' appearance.
+ *
  * @param {string} itemId - The unique ID of the item's DOM element.
  */
 export function updateItemUIDisplay(itemId) {
@@ -59,17 +64,17 @@ export function updateItemUIDisplay(itemId) {
 
   // Control visibility of decrement button based on quantity
   if (quantity > 0) {
-    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100');
+    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure visible
     decrementButton.classList.add('opacity-100');
   } else {
-    decrementButton.classList.remove('opacity-100');
-    decrementButton.classList.add('opacity-0', 'group-hover:opacity-100');
+    decrementButton.classList.remove('opacity-100'); // Hide
+    decrementButton.classList.add('opacity-0', 'group-hover:opacity-100'); // Re-enable group-hover for future visibility
   }
 }
 
 
 /**
- * Increments an item's quantity or selects it if not already selected.
+ * Increments an item's quantity. This is the only action on tap/click.
  * @param {HTMLElement} itemElement - The HTML element of the item card.
  * @param {string} itemId - The unique ID of the item.
  * @param {string} itemName - The full name of the item (e.g., "🍎 Apple").
@@ -106,13 +111,13 @@ export function incrementOrSelectItem(itemElement, itemId, itemName, incrementSt
 }
 
 /**
- * Decrements an item's quantity. Removes item if quantity drops to 0 or less.
+ * Decrements an item's quantity. This is the only action for the minus button.
  * @param {string} itemId - The unique ID of the item.
  * @param {Event} event - The click event to stop propagation.
  */
 export function decrementItem(itemId, event) {
   if (event) {
-    event.stopPropagation();
+    event.stopPropagation(); // Prevents the parent item card's onclick (increment) from firing
   }
 
   let currentSelectedItems = { ...selectedItems };
@@ -158,8 +163,7 @@ export function updateSendButtonVisibilityAndPreview() {
     dom.sendButton.disabled = false;
     const preview = Object.values(selectedItems)
       .map((item) => {
-        // Include the full item.name which contains the emoji
-        return `${item.name}: ${item.quantity} ${item.unit || ''}`;
+        return `${item.name}: ${item.quantity} ${item.unit || ''}`; // item.name already includes emoji
       })
       .join(", ");
     dom.selectedItemsPreview.textContent = `Selected: ${preview}`;
