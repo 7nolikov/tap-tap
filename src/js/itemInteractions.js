@@ -58,17 +58,16 @@ export function updateItemUIDisplay(itemId) {
 
   // Apply styling based on selection state
   if (quantity > 0) {
-    itemElement.classList.add('selected'); // Adds the selected background and border
-    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg'); // Remove unselected background
-    itemElement.classList.add('hover:bg-accent-darker/[0.3]'); // Specific hover for selected state
+    itemElement.classList.add('selected'); // Adds the selected background and border (defined in style.css)
+    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg'); // Remove unselected background classes
+    itemElement.classList.add('bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]'); // Add selected background, border, and hover
     quantityDisplay.textContent = `${quantity} ${unit}`.trim();
-    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure it's fully visible
+    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure it's fully visible, remove group-hover dependence
     decrementButton.classList.add('opacity-100');
   } else {
-    itemElement.classList.remove('selected'); // Remove selected background and border
-    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg'); // Apply unselected background
-    itemElement.classList.remove('hover:bg-accent-darker/[0.3]');
-    quantityDisplay.textContent = `${quantity} ${unit}`.trim(); // Shows "0 unit" as per screenshot
+    itemElement.classList.remove('selected', 'bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]'); // Remove selected classes
+    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg'); // Re-apply unselected background and hover
+    quantityDisplay.textContent = `0 ${unit}`.trim(); // Shows "0 unit" as per screenshot for unselected
     decrementButton.classList.remove('opacity-100'); // Hide decrement button
     decrementButton.classList.add('opacity-0', 'group-hover:opacity-100'); // Re-enable group-hover for future selection
   }
@@ -166,7 +165,7 @@ export function updateSendButtonVisibilityAndPreview() {
     dom.sendButton.disabled = false;
     const preview = Object.values(selectedItems)
       .map((item) => {
-        const [itemIcon, ...nameParts] = item.name.split(" "); // Get icon and name parts
+        const [itemIcon, ...nameParts] = item.name.split(" ");
         const itemNameWithoutIcon = nameParts.join(" ");
         return `${itemNameWithoutIcon}: ${item.quantity} ${item.unit || ''}`;
       })
@@ -314,7 +313,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
 
   let htmlContent = '';
   selectedPreset.categories.forEach(category => {
-    // Determine the border and text color class names dynamically
+    // Dynamically apply border and text color classes based on data
     const categoryBorderClass = category.borderColorClass || 'border-gray-600';
     const categoryTextColorClass = category.textColorClass || 'text-text-primary';
 
@@ -327,6 +326,8 @@ document.body.addEventListener('loadPresetContent', (event) => {
             const actualItemName = nameParts.join(" ");
             const displayUnit = item.unit_of_measure || '';
 
+            // Initial state for all items: unselected, quantity 0, decrement button hidden.
+            // Classes for unselected state directly applied.
             return `
               <div id="${item.id}"
                    class="item-card p-3 rounded-lg flex items-center justify-between transition-all duration-200 cursor-pointer relative overflow-hidden group bg-item-bg hover:bg-card-bg"
@@ -338,7 +339,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
                    ondblclick="decrementItem('${item.id}', event)"
                    title="Click to add, double-click to remove"
               >
-                <div class="flex flex-col items-start flex-grow min-w-0"> <!-- Flex column for name and unit -->
+                <div class="flex flex-col items-start flex-grow min-w-0">
                     <span class="item-name text-text-primary font-semibold text-sm md:text-base truncate w-full non-selectable">${itemIcon} ${actualItemName}</span>
                     <span class="item-details text-text-secondary text-xs truncate w-full non-selectable">Unit: ${displayUnit}</span>
                 </div>

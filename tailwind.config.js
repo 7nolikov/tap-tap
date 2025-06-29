@@ -3,52 +3,58 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}", // Scan all JS files in src for Tailwind classes
-    // Add paths to any other files that use Tailwind classes
   ],
   theme: {
     extend: {
       colors: {
         'primary-bg': '#0D1117',
         'container-bg': '#161B22',
-        'item-bg': '#161B22', // Used for unselected item background (matches container)
-        'card-bg': '#1E252E', // This was previously item-bg, keeping it for clarity if needed.
+        'item-bg': '#161B22', // Unselected item card background, matching container-bg
+        'card-bg': '#1E252E', // This can be used for hover background or other subtle shades
         'text-primary': '#C9D1D9',
         'text-secondary': '#8B949E',
         'accent': '#58A6FF',
         'accent-darker': '#1F6FEB',
         'button-actions': '#238636',
         'button-remove': '#DA3633',
-        // Category border colors - ensure these match default-grocery-data.js
-        'yellow-400': '#F1E05A', // Matches default-grocery-data.js
-        'yellow-500': '#F1E05A', // Use 500 as main for border for consistency
-        'blue-400': '#60A5FA', // Matches default-grocery-data.js
-        'blue-500': '#60A5FA', // Use 500 as main for border
-        'orange-400': '#F97316', // Matches default-grocery-data.js
-        'orange-500': '#F97316', // Use 500 as main for border
-        'green-400': '#22C55E', // Matches default-grocery-data.js
-        'green-500': '#22C55E', // Use 500 as main for border
-        'red-400': '#EF4444',   // Matches default-grocery-data.js
-        'red-500': '#EF4444',   // Use 500 as main for border
-        'zinc-400': '#A1A1AA',  // Matches default-grocery-data.js (was gray)
-        'zinc-500': '#A1A1AA',  // Use 500 as main for border
-        'cyan-400': '#22D3EE',  // Matches default-grocery-data.js
-        'cyan-500': '#22D3EE',  // Use 500 as main for border
-        'indigo-400': '#818CF8', // Matches default-grocery-data.js
-        'indigo-500': '#818CF8', // Use 500 as main for border
+        // Category border and text colors - MUST MATCH default-grocery-data.js values EXACTLY
+        'yellow-400': '#F1E05A',
+        'yellow-500': '#F1E05A',
+        'blue-400': '#60A5FA',
+        'blue-500': '#60A5FA',
+        'orange-400': '#F97316',
+        'orange-500': '#F97316',
+        'green-400': '#22C55E',
+        'green-500': '#22C55E',
+        'red-400': '#EF4444',
+        'red-500': '#EF4444',
+        'zinc-400': '#A1A1AA',
+        'zinc-500': '#A1A1AA',
+        'cyan-400': '#22D3EE',
+        'cyan-500': '#22D3EE',
+        'indigo-400': '#818CF8',
+        'indigo-500': '#818CF8',
       }
     },
   },
   safelist: [
-    // Dynamically generated classes (especially border/text colors based on category data)
+    // Ensure these exact classes are generated, as they are dynamic in JS
     {
       pattern: /(border|text)-(yellow|blue|orange|green|red|zinc|cyan|indigo)-(400|500)/,
-      variants: ['hover', 'focus'],
+      variants: ['hover', 'focus'], // Include variants if categories could be interactive
     },
-    'bg-accent', // For preset selector background
-    'hover:bg-accent-darker', // For preset selector hover
-    'text-white', // For preset selector text
-    'bg-button-remove', // For delete button
-    'hover:bg-red-700' // For delete button hover
+    'bg-accent',
+    'hover:bg-accent-darker',
+    'text-white',
+    'bg-button-remove',
+    'hover:bg-red-700',
+    // Classes used on selected item-card (dynamic)
+    'bg-accent/20', // From itemInteractions.js selected state
+    'border-accent', // From itemInteractions.js selected state
+    'hover:bg-accent-darker/[0.3]', // From itemInteractions.js selected state hover
+    'opacity-0', // For initially hidden decrement button
+    'opacity-100', // For visible decrement button
+    'group-hover:opacity-100', // For decrement button hover
   ],
   plugins: [],
 }

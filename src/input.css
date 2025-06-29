@@ -3,10 +3,9 @@
 @tailwind utilities;
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacMacFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Apply background and text colors from Tailwind config by default */
     @apply bg-primary-bg text-text-primary;
 }
 
@@ -25,9 +24,7 @@ body {
     user-select: none;
 }
 
-/* Animations are defined in inline <style> in index.html for now, but can be moved here */
-/* .animate-flash, .animate-remove rules should be in the main CSS */
-/* Moving them here for cleaner separation */
+/* Animations (moved from inline style in index.html to here) */
 @keyframes flash {
     0% { background-color: transparent; }
     50% { background-color: rgba(88, 166, 255, 0.2); } /* accent color with opacity */
