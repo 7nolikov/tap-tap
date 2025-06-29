@@ -55,24 +55,18 @@ export function updateItemUIDisplay(itemId) {
   const quantity = itemData ? itemData.quantity : 0;
   const unit = itemData ? (itemData.unit || '') : (itemElement.dataset.unitOfMeasure || '');
 
-  // Apply styling based on selection state
-  if (quantity > 0) {
-    itemElement.classList.add('selected'); // Adds the selected background and border (defined in style.css)
-    // Ensure all unselected state classes are removed
-    itemElement.classList.remove('bg-item-bg', 'hover:bg-card-bg');
-    // Add selected state classes
-    itemElement.classList.add('bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]');
+  // Item card background and border remain consistent regardless of quantity > 0
+  // They are now set once in the HTML template via bg-item-bg and border-transparent
 
-    quantityDisplay.textContent = `${quantity} ${unit}`.trim();
-    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100'); // Ensure visible
+  quantityDisplay.textContent = `${quantity} ${unit}`.trim();
+
+  // Control visibility of decrement button based on quantity
+  if (quantity > 0) {
+    decrementButton.classList.remove('opacity-0', 'group-hover:opacity-100');
     decrementButton.classList.add('opacity-100');
   } else {
-    itemElement.classList.remove('selected', 'bg-accent/20', 'border-accent', 'hover:bg-accent-darker/[0.3]'); // Remove selected classes
-    // Re-apply unselected state classes
-    itemElement.classList.add('bg-item-bg', 'hover:bg-card-bg');
-    quantityDisplay.textContent = `0 ${unit}`.trim(); // Shows "0 unit" as per screenshot for unselected
-    decrementButton.classList.remove('opacity-100'); // Hide decrement button
-    decrementButton.classList.add('opacity-0', 'group-hover:opacity-100'); // Re-enable group-hover for future selection
+    decrementButton.classList.remove('opacity-100');
+    decrementButton.classList.add('opacity-0', 'group-hover:opacity-100');
   }
 }
 
@@ -143,9 +137,9 @@ export function decrementItem(itemId, event) {
       setTimeout(() => {
         delete currentSelectedItems[itemId];
         setSelectedItems(currentSelectedItems);
-        updateItemUIDisplay(itemId); // Update UI to show 0/unselected state
+        updateItemUIDisplay(itemId);
         updateSendButtonVisibilityAndPreview();
-      }, 300); // Match animation duration
+      }, 300);
     } else {
       setSelectedItems(currentSelectedItems);
       updateItemUIDisplay(itemId);
@@ -186,10 +180,10 @@ export function updateSendButtonVisibilityAndPreview() {
 export function resetSelectedItemsAndUI() {
   const previouslySelectedIds = Object.keys(selectedItems);
 
-  setSelectedItems({}); // Clear the selectedItems state
+  setSelectedItems({});
 
   previouslySelectedIds.forEach(itemId => {
-    updateItemUIDisplay(itemId); // This will set it to unselected/0 quantity
+    updateItemUIDisplay(itemId);
   });
 
   updateSendButtonVisibilityAndPreview();
@@ -343,7 +337,7 @@ document.body.addEventListener('loadPresetContent', (event) => {
                 <div class="flex items-center flex-shrink-0 ml-2 space-x-2">
                     <span class="item-quantity text-accent font-bold text-lg md:text-xl non-selectable"></span>
                     <button
-                        class="decrement-btn bg-accent hover:bg-accent-darker text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        class="decrement-btn bg-accent hover:bg-accent text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                         onclick="decrementItem('${item.id}', event)"
                     >
                         -
