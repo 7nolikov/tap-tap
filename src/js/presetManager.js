@@ -30,7 +30,8 @@ export async function populatePresetSelector() {
     console.error("Preset selector DOM element not found!");
     return;
   }
-  dom.presetSelector.innerHTML = '<option value="" disabled selected>Loading Presets...</option>'; // Show loading state
+  dom.presetSelector.innerHTML =
+    '<option value="" disabled selected>Loading Presets...</option>'; // Show loading state
 
   try {
     const fetchedPresets = await fetchUserPresets();
@@ -50,17 +51,19 @@ export async function populatePresetSelector() {
 
       updatePresetCrudButtons(initialPresetId);
       handlePresetSelectorChange(dom.presetSelector);
-
     } else {
-      dom.presetSelector.innerHTML = '<option value="" disabled selected>No Presets Available</option>';
-      dom.categoriesContainer.innerHTML = '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">No presets available to load. Create one to get started!</p>';
+      dom.presetSelector.innerHTML =
+        '<option value="" disabled selected>No Presets Available</option>';
+      dom.categoriesContainer.innerHTML =
+        '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">No presets available to load. Create one to get started!</p>';
       updatePresetCrudButtons(null);
     }
-
   } catch (error) {
     console.error("Error populating preset selector:", error);
-    dom.presetSelector.innerHTML = '<option value="" disabled selected>Error loading presets</option>';
-    dom.categoriesContainer.innerHTML = '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">Failed to load presets. Please check your connection.</p>';
+    dom.presetSelector.innerHTML =
+      '<option value="" disabled selected>Error loading presets</option>';
+    dom.categoriesContainer.innerHTML =
+      '<p id="categories-placeholder" class="text-center text-gray-500 py-10 non-selectable">Failed to load presets. Please check your connection.</p>';
     updatePresetCrudButtons(null);
   }
 }
@@ -111,7 +114,12 @@ export function handleAddPreset() {
             handlePresetSelectorChange(dom.presetSelector);
           } else {
             console.error("Failed to add new preset.");
-            showModal("Error", "Failed to create new preset. Please try again.", null, true);
+            // FIX: Changed 'null' to '[]' and removed extra 'true'
+            showModal(
+              "Error",
+              "Failed to create new preset. Please try again.",
+              []
+            );
           }
         },
         hideOnClick: false,
@@ -181,7 +189,8 @@ export function handleEditPreset() {
           );
 
           if (existingCheck) {
-            errorP.textContent = "Another preset with this name already exists.";
+            errorP.textContent =
+              "Another preset with this name already exists.";
             errorP.classList.remove("hidden");
             nameInput?.focus();
             return;
@@ -193,19 +202,26 @@ export function handleEditPreset() {
           );
           if (updatedPreset) {
             hideModal();
-            const option = dom.presetSelector.querySelector(`option[value="${updatedPreset.id}"]`);
+            const option = dom.presetSelector.querySelector(
+              `option[value="${updatedPreset.id}"]`
+            );
             if (option) {
-                option.textContent = updatedPreset.name;
+              option.textContent = updatedPreset.name;
             }
-            const index = userPresetsCache.findIndex(p => p.id === updatedPreset.id);
+            const index = userPresetsCache.findIndex(
+              (p) => p.id === updatedPreset.id
+            );
             if (index !== -1) {
-                userPresetsCache[index].name = updatedPreset.name;
+              userPresetsCache[index].name = updatedPreset.name;
             }
             handlePresetSelectorChange(dom.presetSelector);
           } else {
-            errorP.textContent =
-              "Failed to update preset. It might no longer exist or you lack permission.";
-            errorP.classList.remove("hidden");
+            // FIX: Changed 'null' to '[]' and removed extra 'true'
+            showModal(
+              "Error",
+              "Failed to update preset. It might no longer exist or you lack permission.",
+              []
+            );
           }
         },
       },
@@ -253,7 +269,12 @@ export function handleDeletePreset() {
             hideModal();
             await populatePresetSelector();
           } else {
-            showModal("Error", "Failed to delete preset. Please try again.", null, true);
+            // FIX: Changed 'null' to '[]' and removed extra 'true'
+            showModal(
+              "Error",
+              "Failed to delete preset. Please try again.",
+              []
+            );
           }
         },
       },
@@ -271,7 +292,7 @@ export function updatePresetCrudButtons(selectedPresetId) {
 
   if (dom.addPresetBtn) {
     dom.addPresetBtn.disabled = !canInteractWithSupabase;
-    dom.addPresetBtn.classList.toggle("hidden", !canInteractWithSupabase); // Show only if supabase is connected
+    dom.addPresetBtn.classList.toggle("hidden", !canInteractWithSupabase);
   }
 
   [dom.editPresetBtn, dom.deletePresetBtn].forEach((btn) => {
