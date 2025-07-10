@@ -6,7 +6,7 @@ import { showModal } from "./modal.js";
 import { telegramWebApp, isGuestMode } from "./telegram.js";
 import { DEFAULT_PRESET_ID } from "./constants.js";
 import { setUserPresetsCache } from "./state.js";
-import { defaultGroceryData } from "../data/default-grocery-data.js";
+import { defaultGroceryData } from "./default-grocery-data.js";
 
 /**
  * Manages Supabase client initialization and API interactions with Edge Functions.
