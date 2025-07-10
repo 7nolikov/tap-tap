@@ -14,19 +14,19 @@ import { defaultGroceryData } from "./default-grocery-data.js";
  * requests to the `db-operations` Edge Function.
  */
 
-// Supabase configuration from config.js (assuming window.SUPABASE_CONFIG is set globally)
-const supabaseUrl = window.SUPABASE_CONFIG?.URL;
-const supabaseAnonKey = window.SUPABASE_CONFIG?.ANON_KEY;
+// Supabase configuration from config.js
+const supabaseUrl = window.SUPABASE_URL;
+const supabaseAnonKey = window.SUPABASE_ANON_KEY;
 
-// Initialize Supabase client by accessing createClient from the global window.supabase object
-export const supabaseClient =
-  supabaseUrl && supabaseAnonKey && window.supabase?.createClient
+// Use the client initialized in config.js, or create one if it doesn't exist
+export const supabaseClient = window.supabaseClient || 
+  (supabaseUrl && supabaseAnonKey && window.supabase?.createClient
     ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+    : null);
 
 if (!supabaseClient) {
   console.warn(
-    "Supabase client not initialized. Check SUPABASE_CONFIG in config.js or if Supabase CDN loaded correctly."
+    "Supabase client not initialized. Check SUPABASE_URL and SUPABASE_ANON_KEY in config.js or if Supabase CDN loaded correctly."
   );
 }
 
