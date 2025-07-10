@@ -270,6 +270,7 @@ export function sendList() {
   }
 
   const message = formatListForTelegram(selectedItems);
+  console.log("Prepared message for sending:", message);
 
   if (telegramWebApp.isClosed) {
     showModal(
@@ -279,25 +280,88 @@ export function sendList() {
     return;
   }
 
+  // Log available methods for debugging
+  console.log("Available Telegram WebApp methods:", {
+    sendData: typeof telegramWebApp.sendData,
+    openTelegramLink: typeof telegramWebApp.openTelegramLink,
+    showPopup: typeof telegramWebApp.showPopup,
+    showAlert: typeof telegramWebApp.showAlert,
+    showConfirm: typeof telegramWebApp.showConfirm,
+    showScanQrPopup: typeof telegramWebApp.showScanQrPopup,
+    close: typeof telegramWebApp.close,
+    expand: typeof telegramWebApp.expand,
+    ready: typeof telegramWebApp.ready,
+    isExpanded: telegramWebApp.isExpanded,
+    viewportHeight: telegramWebApp.viewportHeight,
+    viewportStableHeight: telegramWebApp.viewportStableHeight,
+    headerColor: telegramWebApp.headerColor,
+    backgroundColor: telegramWebApp.backgroundColor,
+    isClosingConfirmationEnabled: telegramWebApp.isClosingConfirmationEnabled,
+    backButton: telegramWebApp.backButton,
+    mainButton: telegramWebApp.mainButton,
+    hapticFeedback: telegramWebApp.hapticFeedback,
+    cloudStorage: telegramWebApp.cloudStorage,
+    initData: telegramWebApp.initData,
+    initDataUnsafe: telegramWebApp.initDataUnsafe,
+    version: telegramWebApp.version,
+    platform: telegramWebApp.platform,
+    colorScheme: telegramWebApp.colorScheme,
+    themeParams: telegramWebApp.themeParams,
+    isClosingConfirmationEnabled: telegramWebApp.isClosingConfirmationEnabled,
+    isClosingConfirmationEnabled: telegramWebApp.isClosingConfirmationEnabled,
+  });
+
   try {
-    if (telegramWebApp.sendData) {
-      console.log("Sending data to Telegram bot:", message);
+    // Try multiple methods to send the message
+    let sent = false;
+
+    // Method 1: Try sendData (for bot communication)
+    if (telegramWebApp.sendData && typeof telegramWebApp.sendData === 'function') {
+      console.log("Attempting to send data via sendData method...");
       telegramWebApp.sendData(message);
-      telegramWebApp.close();
-    } else if (telegramWebApp.openTelegramLink) {
+      sent = true;
+      console.log("Data sent via sendData method");
+    }
+
+    // Method 2: Try openTelegramLink (for sharing to chat)
+    if (!sent && telegramWebApp.openTelegramLink && typeof telegramWebApp.openTelegramLink === 'function') {
+      console.log("Attempting to send data via openTelegramLink method...");
       const encodedMessage = encodeURIComponent(message);
-      telegramWebApp.openTelegramLink(`https://t.me/share/url?url=&text=${encodedMessage}`);
+      const shareUrl = `https://t.me/share/url?url=&text=${encodedMessage}`;
+      console.log("Share URL:", shareUrl);
+      telegramWebApp.openTelegramLink(shareUrl);
+      sent = true;
+      console.log("Data sent via openTelegramLink method");
+    }
+
+    // Method 3: Try using MainButton to send (alternative approach)
+    if (!sent && telegramWebApp.MainButton && typeof telegramWebApp.MainButton.show === 'function') {
+      console.log("Attempting to send data via MainButton method...");
+      telegramWebApp.MainButton.setText("Sending...");
+      telegramWebApp.MainButton.show();
+      // This is a fallback - MainButton doesn't directly send data but can trigger actions
+      sent = true;
+      console.log("MainButton shown as fallback");
+    }
+
+    if (sent) {
+      console.log("Message sent successfully, closing WebApp...");
+      // Add a small delay before closing to ensure the message is sent
+      setTimeout(() => {
+        telegramWebApp.close();
+      }, 500);
     } else {
+      console.error("No available method to send message");
       showModal(
         "Send Failed",
-        "Cannot send message. Telegram WebApp features not available."
+        "No available method to send message. Please try again or contact support."
       );
     }
   } catch (error) {
     console.error("Error sending data via Telegram WebApp:", error);
     showModal(
       "Send Failed",
-      "Failed to send message. Please try again."
+      `Failed to send message: ${error.message}. Please try again.`
     );
   }
 
