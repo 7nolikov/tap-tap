@@ -149,7 +149,8 @@ export async function authenticateUser() {
 async function invokeDbOperation(operationType, action, data = {}, id = null) {
   // Disallow non-read operations in guest mode (e.g., create, update, delete)
   // Also disallow any operations on 'category' or 'item' in guest mode for simplicity.
-  if (isGuestMode && (action !== "read" || operationType !== "preset")) {
+  // However, if the user has a valid JWT token, allow all operations regardless of guest mode
+  if (isGuestMode && !currentAuthToken && (action !== "read" || operationType !== "preset")) {
     showModal(
       "Feature Unavailable",
       "This action requires an authenticated user. Please open in Telegram to link your account or access full features."
