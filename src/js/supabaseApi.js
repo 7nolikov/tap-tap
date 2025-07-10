@@ -1,11 +1,12 @@
 // src/js/supabaseApi.js
 
-import { createClient } from "@supabase/supabase-js";
-import { showModal } from "./modal.js"; // Assuming modal.js is correctly imported and showModal is available
-import { telegramWebApp, isGuestMode } from "./telegram.js"; // Assuming telegram.js provides these
-import { DEFAULT_PRESET_ID } from "./constants.js"; // Assuming constants.js provides this
-import { setUserPresetsCache } from "./state.js"; // Assuming state.js provides this
-import { defaultGroceryData } from "../data/default-grocery-data.js"; // Correct path to default data
+// REMOVED: import { createClient } from '@supabase/supabase-js'; // This caused the TypeError
+
+import { showModal } from "./modal.js";
+import { telegramWebApp, isGuestMode } from "./telegram.js";
+import { DEFAULT_PRESET_ID } from "./constants.js";
+import { setUserPresetsCache } from "./state.js";
+import { defaultGroceryData } from "../data/default-grocery-data.js";
 
 /**
  * Manages Supabase client initialization and API interactions with Edge Functions.
@@ -17,15 +18,15 @@ import { defaultGroceryData } from "../data/default-grocery-data.js"; // Correct
 const supabaseUrl = window.SUPABASE_CONFIG?.URL;
 const supabaseAnonKey = window.SUPABASE_CONFIG?.ANON_KEY;
 
-// Initialize Supabase client
+// Initialize Supabase client by accessing createClient from the global window.supabase object
 export const supabaseClient =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
+  supabaseUrl && supabaseAnonKey && window.supabase?.createClient
+    ? window.supabase.createClient(supabaseUrl, supabaseAnonKey)
     : null;
 
 if (!supabaseClient) {
   console.warn(
-    "Supabase client not initialized. Check SUPABASE_CONFIG in config.js"
+    "Supabase client not initialized. Check SUPABASE_CONFIG in config.js or if Supabase CDN loaded correctly."
   );
 }
 
