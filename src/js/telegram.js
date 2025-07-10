@@ -22,10 +22,19 @@ export function initializeTelegramWebApp() {
       console.log("WebApp platform:", telegramWebApp.platform);
       console.log("WebApp version:", telegramWebApp.version);
       console.log("WebApp initData:", telegramWebApp.initData);
+      console.log("WebApp colorScheme:", telegramWebApp.colorScheme);
+      console.log("WebApp themeParams:", telegramWebApp.themeParams);
       
       // Set up WebApp
       telegramWebApp.expand(); // Always expand
       telegramWebApp.ready(); // Tell Telegram we're ready
+      
+      // Check if we're actually in a Telegram environment
+      // The platform should be one of: 'android', 'ios', 'macos', 'tdesktop', 'weba', 'webk', 'unigram', 'unknown'
+      if (telegramWebApp.platform === 'unknown') {
+        console.warn("Telegram WebApp platform is 'unknown'. This might indicate we're not in a real Telegram environment.");
+        // Still treat as Telegram WebApp if we have the object, but log the warning
+      }
       
       isGuestMode = false;
       return true; // Indicate successful initialization

@@ -261,26 +261,44 @@ export function sendList() {
   }
 
   if (Object.keys(selectedItems).length === 0) {
-    telegramWebApp.showAlert("Please select at least one item to send.");
+    // Use showModal instead of showAlert for better compatibility
+    showModal(
+      "No Items Selected",
+      "Please select at least one item to send."
+    );
     return;
   }
 
   const message = formatListForTelegram(selectedItems);
 
   if (telegramWebApp.isClosed) {
-    telegramWebApp.showAlert('Telegram Web App is closed. Cannot send message.');
+    showModal(
+      "Send Failed",
+      "Telegram Web App is closed. Cannot send message."
+    );
     return;
   }
 
-  if (telegramWebApp.sendData) {
-    console.log("Sending data to Telegram bot:", message);
-    telegramWebApp.sendData(message);
-    telegramWebApp.close();
-  } else if (telegramWebApp.openTelegramLink) {
-    const encodedMessage = encodeURIComponent(message);
-    telegramWebApp.openTelegramLink(`https://t.me/share/url?url=&text=${encodedMessage}`);
-  } else {
-    telegramWebApp.showAlert("Cannot send message. Telegram WebApp features not available.");
+  try {
+    if (telegramWebApp.sendData) {
+      console.log("Sending data to Telegram bot:", message);
+      telegramWebApp.sendData(message);
+      telegramWebApp.close();
+    } else if (telegramWebApp.openTelegramLink) {
+      const encodedMessage = encodeURIComponent(message);
+      telegramWebApp.openTelegramLink(`https://t.me/share/url?url=&text=${encodedMessage}`);
+    } else {
+      showModal(
+        "Send Failed",
+        "Cannot send message. Telegram WebApp features not available."
+      );
+    }
+  } catch (error) {
+    console.error("Error sending data via Telegram WebApp:", error);
+    showModal(
+      "Send Failed",
+      "Failed to send message. Please try again."
+    );
   }
 
   resetSelectedItemsAndUI();
