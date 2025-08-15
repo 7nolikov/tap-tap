@@ -5,9 +5,6 @@ on:
   push:
     branches:
       - main # Or your default branch
-  pull_request:
-    branches:
-      - main # Or your default branch
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -35,19 +32,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20' # Specify your desired Node.js version
-          cache: 'npm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
-      - name: Build Tailwind CSS
-        run: npm run build:css # This script is defined in your package.json
+      - name: Build project
+        run: pnpm build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload everything in the root directory. Adjust if your site is built to a subfolder.
-          path: '.' 
+          path: './out'
 
   deploy:
     needs: build
