@@ -17,6 +17,7 @@ module.exports = {
     'from-[#8b5cf6]', 'to-[#8b5cf6]/80', 'border-[#8b5cf6]/20',
     'from-[#ec4899]', 'to-[#ec4899]/80', 'border-[#ec4899]/20',
     'from-[#06b6d4]', 'to-[#06b6d4]/80', 'border-[#06b6d4]/20',
+    'from-[#78350f]', 'to-[#78350f]/80', 'border-[#78350f]/20',
     // Your previous safelisted items
     {
       pattern: /(border|text)-(yellow|blue|orange|green|red|zinc|cyan|indigo)-(400|500)/,
