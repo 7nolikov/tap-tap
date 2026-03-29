@@ -1,20 +1,23 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Plus, Settings, Download, Upload, ChefHat, Copy } from "lucide-react"
+import { Plus, Settings, Download, Upload, ChefHat, Share2, RotateCcw, Sun, Moon, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "sonner"
+import { z } from "zod"
+import { useTheme } from "next-themes"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Item {
   id: string
   name: string
   emoji: string
-  count: number
 }
 
 interface Category {
@@ -30,8 +33,91 @@ interface Preset {
   categories: Category[]
 }
 
-const defaultGroceryPreset: Preset = {
-  id: "grocery-default",
+// ─── Validation ───────────────────────────────────────────────────────────────
+
+const ItemSchema = z.object({ id: z.string(), name: z.string(), emoji: z.string() })
+const CategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  items: z.array(ItemSchema),
+})
+const PresetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  categories: z.array(CategorySchema),
+})
+const PresetsSchema = z.array(PresetSchema)
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Composite key prevents collisions when multiple categories share item id strings */
+const k = (catId: string, itemId: string) => `${catId}:${itemId}`
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+// ─── Share utilities ──────────────────────────────────────────────────────────
+
+interface SharedItem {
+  c: string // category name
+  e: string // emoji
+  l: string // label
+  q: number // quantity
+}
+
+interface ShareData {
+  n: string // preset name
+  i: SharedItem[]
+}
+
+function encodeList(preset: Preset, sel: Record<string, number>): string {
+  const items: SharedItem[] = preset.categories.flatMap((cat) =>
+    cat.items
+      .filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0)
+      .map((item) => ({
+        c: cat.name,
+        e: item.emoji,
+        l: item.name,
+        q: sel[k(cat.id, item.id)],
+      })),
+  )
+  return btoa(encodeURIComponent(JSON.stringify({ n: preset.name, i: items })))
+}
+
+function decodeList(hash: string): ShareData | null {
+  if (!hash.startsWith("#list=")) return null
+  try {
+    return JSON.parse(decodeURIComponent(atob(hash.slice(6)))) as ShareData
+  } catch {
+    return null
+  }
+}
+
+function buildShareText(preset: Preset, sel: Record<string, number>, url: string): string {
+  let text = `🛒 ${preset.name}:\n\n`
+  preset.categories.forEach((cat) => {
+    const items = cat.items.filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0)
+    if (items.length > 0) {
+      text += `${cat.name}:\n`
+      items.forEach((item) => {
+        text += `  ${item.emoji} ${item.name} ×${sel[k(cat.id, item.id)]}\n`
+      })
+      text += "\n"
+    }
+  })
+  text += `📱 Open list: ${url}`
+  return text
+}
+
+// ─── Default preset ───────────────────────────────────────────────────────────
+
+const defaultPreset: Preset = {
+  id: "grocery",
   name: "Grocery Shopping",
   categories: [
     {
@@ -39,13 +125,13 @@ const defaultGroceryPreset: Preset = {
       name: "Dairy & Eggs",
       color: "#3b82f6",
       items: [
-        { id: "milk", name: "Milk", emoji: "🥛", count: 0 },
-        { id: "cheese", name: "Cheese", emoji: "🧀", count: 0 },
-        { id: "eggs", name: "Eggs", emoji: "🥚", count: 0 },
-        { id: "butter", name: "Butter", emoji: "🧈", count: 0 },
-        { id: "yogurt", name: "Yogurt", emoji: "🍶", count: 0 },
-        { id: "sour-cream", name: "Sour Cream", emoji: "🥛", count: 0 },
-        { id: "cottage-cheese", name: "Cottage Cheese", emoji: "🧀", count: 0 },
+        { id: "milk", name: "Milk", emoji: "🥛" },
+        { id: "cheese", name: "Cheese", emoji: "🧀" },
+        { id: "eggs", name: "Eggs", emoji: "🥚" },
+        { id: "butter", name: "Butter", emoji: "🧈" },
+        { id: "yogurt", name: "Yogurt", emoji: "🍶" },
+        { id: "sour-cream", name: "Sour Cream", emoji: "🥛" },
+        { id: "cottage-cheese", name: "Cottage Cheese", emoji: "🧀" },
       ],
     },
     {
@@ -53,48 +139,48 @@ const defaultGroceryPreset: Preset = {
       name: "Fruits & Vegetables",
       color: "#10b981",
       items: [
-        { id: "apples", name: "Apples", emoji: "🍎", count: 0 },
-        { id: "bananas", name: "Bananas", emoji: "🍌", count: 0 },
-        { id: "carrots", name: "Carrots", emoji: "🥕", count: 0 },
-        { id: "cucumbers", name: "Cucumbers", emoji: "🥒", count: 0 },
-        { id: "tomatoes", name: "Tomatoes", emoji: "🍅", count: 0 },
-        { id: "onions", name: "Onions", emoji: "🧅", count: 0 },
-        { id: "potatoes", name: "Potatoes", emoji: "🥔", count: 0 },
-        { id: "broccoli", name: "Broccoli", emoji: "🥦", count: 0 },
-        { id: "garlic", name: "Garlic", emoji: "🧄", count: 0 },
-        { id: "mushrooms", name: "Mushrooms", emoji: "🍄", count: 0 },
-        { id: "oranges", name: "Oranges", emoji: "🍊", count: 0 },
-        { id: "lemons", name: "Lemons", emoji: "🍋", count: 0 },
-        { id: "bell-peppers", name: "Bell Peppers", emoji: "🫑", count: 0 },
-        { id: "cabbage", name: "Cabbage", emoji: "🥬", count: 0 },
+        { id: "apples", name: "Apples", emoji: "🍎" },
+        { id: "bananas", name: "Bananas", emoji: "🍌" },
+        { id: "carrots", name: "Carrots", emoji: "🥕" },
+        { id: "cucumbers", name: "Cucumbers", emoji: "🥒" },
+        { id: "tomatoes", name: "Tomatoes", emoji: "🍅" },
+        { id: "onions", name: "Onions", emoji: "🧅" },
+        { id: "potatoes", name: "Potatoes", emoji: "🥔" },
+        { id: "broccoli", name: "Broccoli", emoji: "🥦" },
+        { id: "garlic", name: "Garlic", emoji: "🧄" },
+        { id: "mushrooms", name: "Mushrooms", emoji: "🍄" },
+        { id: "oranges", name: "Oranges", emoji: "🍊" },
+        { id: "lemons", name: "Lemons", emoji: "🍋" },
+        { id: "bell-peppers", name: "Bell Peppers", emoji: "🫑" },
+        { id: "cabbage", name: "Cabbage", emoji: "🥬" },
       ],
     },
     {
-      id: "canned-goods",
-      name: "Canned & Prepared Foods",
+      id: "canned",
+      name: "Canned & Prepared",
       color: "#78350f",
       items: [
-        { id: "canned-corn", name: "Canned Corn", emoji: "🌽", count: 0 },
-        { id: "green-peas", name: "Green Peas", emoji: "🫛", count: 0 },
-        { id: "canned-beans", name: "Canned Beans", emoji: "🫘", count: 0 },
-        { id: "canned-fish", name: "Canned Fish", emoji: "🐟", count: 0 },
-        { id: "canned-stew", name: "Canned Stew", emoji: "🍖", count: 0 },
-        { id: "frozen-vegetables", name: "Frozen Vegetables", emoji: "🧊", count: 0 },
-        { id: "dumplings", name: "Dumplings", emoji: "🥟", count: 0 },
-        { id: "sausages", name: "Sausages", emoji: "🌭", count: 0 },
+        { id: "corn", name: "Canned Corn", emoji: "🌽" },
+        { id: "peas", name: "Green Peas", emoji: "🫛" },
+        { id: "beans", name: "Canned Beans", emoji: "🫘" },
+        { id: "fish", name: "Canned Fish", emoji: "🐟" },
+        { id: "stew", name: "Canned Stew", emoji: "🍖" },
+        { id: "frozen-veg", name: "Frozen Vegetables", emoji: "🧊" },
+        { id: "dumplings", name: "Dumplings", emoji: "🥟" },
+        { id: "sausages", name: "Sausages", emoji: "🌭" },
       ],
     },
     {
-      id: "salad-ingredients",
+      id: "salad",
       name: "Salad Ingredients",
       color: "#f59e0b",
       items: [
-        { id: "lettuce-leaves", name: "Lettuce Leaves", emoji: "🥬", count: 0 },
-        { id: "cherry-tomatoes", name: "Cherry Tomatoes", emoji: "🍅", count: 0 },
-        { id: "cucumbers", name: "Cucumbers", emoji: "🥒", count: 0 },
-        { id: "salad-dressing", name: "Salad Dressing", emoji: "🍶", count: 0 },
-        { id: "olives", name: "Olives", emoji: "🫒", count: 0 },
-        { id: "feta", name: "Feta Cheese", emoji: "🧀", count: 0 },
+        { id: "lettuce", name: "Lettuce", emoji: "🥬" },
+        { id: "cherry-tomatoes", name: "Cherry Tomatoes", emoji: "🍅" },
+        { id: "cucumbers", name: "Cucumbers", emoji: "🥒" },
+        { id: "dressing", name: "Salad Dressing", emoji: "🍶" },
+        { id: "olives", name: "Olives", emoji: "🫒" },
+        { id: "feta", name: "Feta Cheese", emoji: "🧀" },
       ],
     },
     {
@@ -102,32 +188,32 @@ const defaultGroceryPreset: Preset = {
       name: "Meat & Seafood",
       color: "#ef4444",
       items: [
-        { id: "chicken-breast", name: "Chicken Fillet", emoji: "🍗", count: 0 },
-        { id: "pork", name: "Pork", emoji: "🥩", count: 0 },
-        { id: "ground-beef", name: "Ground Beef", emoji: "🥩", count: 0 },
-        { id: "salmon", name: "Salmon Fillet", emoji: "🐟", count: 0 },
-        { id: "shrimp", name: "Shrimp", emoji: "🦐", count: 0 },
-        { id: "bacon", name: "Bacon", emoji: "🥓", count: 0 },
-        { id: "cod", name: "Cod Fillet", emoji: "🐠", count: 0 },
+        { id: "chicken", name: "Chicken Fillet", emoji: "🍗" },
+        { id: "pork", name: "Pork", emoji: "🥩" },
+        { id: "ground-beef", name: "Ground Beef", emoji: "🥩" },
+        { id: "salmon", name: "Salmon Fillet", emoji: "🐟" },
+        { id: "shrimp", name: "Shrimp", emoji: "🦐" },
+        { id: "bacon", name: "Bacon", emoji: "🥓" },
+        { id: "cod", name: "Cod Fillet", emoji: "🐠" },
       ],
     },
     {
       id: "pantry",
       name: "Pantry & Grains",
-      color: "#f59e0b",
+      color: "#d97706",
       items: [
-        { id: "white-bread", name: "White Bread", emoji: "🍞", count: 0 },
-        { id: "rye-bread", name: "Rye Bread", emoji: "🍞", count: 0 },
-        { id: "rice", name: "Rice", emoji: "🍚", count: 0 },
-        { id: "pasta", name: "Pasta", emoji: "🍝", count: 0 },
-        { id: "buckwheat", name: "Buckwheat", emoji: "🥣", count: 0 },
-        { id: "oats", name: "Rolled Oats", emoji: "🥣", count: 0 },
-        { id: "olive-oil", name: "Olive Oil", emoji: "🫒", count: 0 },
-        { id: "salt", name: "Salt", emoji: "🧂", count: 0 },
-        { id: "sugar", name: "Sugar", emoji: "🍚", count: 0 },
-        { id: "flour", name: "Flour", emoji: "🌾", count: 0 },
-        { id: "tea", name: "Tea", emoji: "🍵", count: 0 },
-        { id: "coffee", name: "Coffee", emoji: "☕", count: 0 },
+        { id: "white-bread", name: "White Bread", emoji: "🍞" },
+        { id: "rye-bread", name: "Rye Bread", emoji: "🍞" },
+        { id: "rice", name: "Rice", emoji: "🍚" },
+        { id: "pasta", name: "Pasta", emoji: "🍝" },
+        { id: "buckwheat", name: "Buckwheat", emoji: "🥣" },
+        { id: "oats", name: "Rolled Oats", emoji: "🥣" },
+        { id: "olive-oil", name: "Olive Oil", emoji: "🫒" },
+        { id: "salt", name: "Salt", emoji: "🧂" },
+        { id: "sugar", name: "Sugar", emoji: "🍚" },
+        { id: "flour", name: "Flour", emoji: "🌾" },
+        { id: "tea", name: "Tea", emoji: "🍵" },
+        { id: "coffee", name: "Coffee", emoji: "☕" },
       ],
     },
     {
@@ -135,14 +221,14 @@ const defaultGroceryPreset: Preset = {
       name: "Snacks & Sweets",
       color: "#ec4899",
       items: [
-        { id: "chips", name: "Chips", emoji: "🍟", count: 0 },
-        { id: "chocolate", name: "Chocolate", emoji: "🍫", count: 0 },
-        { id: "cookies", name: "Cookies", emoji: "🍪", count: 0 },
-        { id: "nuts", name: "Nuts", emoji: "🌰", count: 0 },
-        { id: "crackers", name: "Crackers", emoji: "🍘", count: 0 },
-        { id: "ice-cream", name: "Ice Cream", emoji: "🍦", count: 0 },
-        { id: "candy", name: "Candy", emoji: "🍬", count: 0 },
-        { id: "biscuits", name: "Biscuits", emoji: "🥨", count: 0 },
+        { id: "chips", name: "Chips", emoji: "🍟" },
+        { id: "chocolate", name: "Chocolate", emoji: "🍫" },
+        { id: "cookies", name: "Cookies", emoji: "🍪" },
+        { id: "nuts", name: "Nuts", emoji: "🌰" },
+        { id: "crackers", name: "Crackers", emoji: "🍘" },
+        { id: "ice-cream", name: "Ice Cream", emoji: "🍦" },
+        { id: "candy", name: "Candy", emoji: "🍬" },
+        { id: "biscuits", name: "Biscuits", emoji: "🥨" },
       ],
     },
     {
@@ -150,12 +236,12 @@ const defaultGroceryPreset: Preset = {
       name: "Beverages",
       color: "#8b5cf6",
       items: [
-        { id: "water", name: "Water", emoji: "💧", count: 0 },
-        { id: "juice", name: "Juice", emoji: "🧃", count: 0 },
-        { id: "soda", name: "Soda", emoji: "🥤", count: 0 },
-        { id: "kefir", name: "Kefir", emoji: "🥛", count: 0 },
-        { id: "beer", name: "Beer", emoji: "🍺", count: 0 },
-        { id: "wine", name: "Wine", emoji: "🍷", count: 0 },
+        { id: "water", name: "Water", emoji: "💧" },
+        { id: "juice", name: "Juice", emoji: "🧃" },
+        { id: "soda", name: "Soda", emoji: "🥤" },
+        { id: "kefir", name: "Kefir", emoji: "🥛" },
+        { id: "beer", name: "Beer", emoji: "🍺" },
+        { id: "wine", name: "Wine", emoji: "🍷" },
       ],
     },
     {
@@ -163,158 +249,244 @@ const defaultGroceryPreset: Preset = {
       name: "Household Goods",
       color: "#06b6d4",
       items: [
-         { id: "toilet-paper", name: "Toilet Paper", emoji: "🧻", count: 0 },
-              { id: "dish-soap", name: "Dish Soap", emoji: "🧽", count: 0 },
-              { id: "laundry-detergent", name: "Laundry Detergent", emoji: "🧴", count: 0 },
-              { id: "toothpaste", name: "Toothpaste", emoji: "🦷", count: 0 },
-              { id: "shampoo", name: "Shampoo", emoji: "🧴", count: 0 },
-              { id: "paper-towels", name: "Paper Towels", emoji: "🧻", count: 0 },
-              { id: "hand-soap", name: "Hand Soap", emoji: "🧼", count: 0 },
-              { id: "trash-bags", name: "Trash Bags", emoji: "🗑️", count: 0 },
+        { id: "toilet-paper", name: "Toilet Paper", emoji: "🧻" },
+        { id: "dish-soap", name: "Dish Soap", emoji: "🧽" },
+        { id: "laundry", name: "Laundry Detergent", emoji: "🧴" },
+        { id: "toothpaste", name: "Toothpaste", emoji: "🦷" },
+        { id: "shampoo", name: "Shampoo", emoji: "🧴" },
+        { id: "paper-towels", name: "Paper Towels", emoji: "🧻" },
+        { id: "hand-soap", name: "Hand Soap", emoji: "🧼" },
+        { id: "trash-bags", name: "Trash Bags", emoji: "🗑️" },
       ],
     },
   ],
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function TapTapShare() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const [presets, setPresets] = useState<Preset[]>([])
   const [currentPreset, setCurrentPreset] = useState<Preset | null>(null)
-  const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({})
-  const [showCookieWarning, setShowCookieWarning] = useState(true)
+  const [sel, setSel] = useState<Record<string, number>>({})
+  const [showCookieNotice, setShowCookieNotice] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [newPresetName, setNewPresetName] = useState("")
   const [showNewPreset, setShowNewPreset] = useState(false)
-  const [showCopyNotification, setShowCopyNotification] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
+  const [addingToCat, setAddingToCat] = useState<string | null>(null)
+  const [newItemEmoji, setNewItemEmoji] = useState("")
+  const [newItemName, setNewItemName] = useState("")
+  const [sharedList, setSharedList] = useState<ShareData | null>(null)
 
+  // Hydration guard for theme toggle
+  useEffect(() => setMounted(true), [])
+
+  // Load from localStorage + handle share hash on mount
   useEffect(() => {
-    const savedPresets = localStorage.getItem("tap-tap-share-presets")
-    const savedCookieWarning = localStorage.getItem("tap-tap-share-cookie-accepted")
+    const raw = localStorage.getItem("tap-tap-share-presets")
+    let loaded: Preset[] = [defaultPreset]
+    if (raw) {
+      try {
+        const result = PresetsSchema.safeParse(JSON.parse(raw))
+        if (result.success) loaded = result.data
+      } catch {
+        // corrupted storage — fall back to default
+      }
+    }
+    setPresets(loaded)
 
-    if (savedPresets) {
-      const parsedPresets = JSON.parse(savedPresets)
-      setPresets(parsedPresets)
-      setCurrentPreset(parsedPresets[0] || null)
-    } else {
-      setPresets([defaultGroceryPreset])
-      setCurrentPreset(defaultGroceryPreset)
+    const savedId = localStorage.getItem("tap-tap-share-current-preset")
+    setCurrentPreset(loaded.find((p) => p.id === savedId) ?? loaded[0] ?? null)
+
+    if (localStorage.getItem("tap-tap-share-cookie-accepted") !== "true") {
+      setShowCookieNotice(true)
     }
 
-    if (savedCookieWarning === "true") {
-      setShowCookieWarning(false)
+    // Decode shared list from URL hash
+    const shared = decodeList(window.location.hash)
+    if (shared) {
+      setSharedList(shared)
+      window.history.replaceState(null, "", window.location.pathname)
     }
   }, [])
 
-  const handleItemTap = (itemId: string) => {
-    setSelectedItems((prev) => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1,
-    }))
-  }
+  // Persist presets whenever they change
+  useEffect(() => {
+    if (presets.length > 0) {
+      localStorage.setItem("tap-tap-share-presets", JSON.stringify(presets))
+    }
+  }, [presets])
 
-  const handleItemDecrease = (itemId: string) => {
-    setSelectedItems((prev) => {
-      const newCount = (prev[itemId] || 0) - 1
-      if (newCount <= 0) {
-        const { [itemId]: _, ...rest } = prev
-        return rest
+  // Persist active preset id
+  useEffect(() => {
+    if (currentPreset) {
+      localStorage.setItem("tap-tap-share-current-preset", currentPreset.id)
+    }
+  }, [currentPreset])
+
+  // ── Item tap handlers ──────────────────────────────────────────────────────
+
+  const tap = (catId: string, itemId: string) =>
+    setSel((prev) => ({ ...prev, [k(catId, itemId)]: (prev[k(catId, itemId)] ?? 0) + 1 }))
+
+  const dec = (catId: string, itemId: string) =>
+    setSel((prev) => {
+      const count = (prev[k(catId, itemId)] ?? 0) - 1
+      if (count <= 0) {
+        const next = { ...prev }
+        delete next[k(catId, itemId)]
+        return next
       }
-      return { ...prev, [itemId]: newCount }
-    })
-  }
-
-  const getSelectedItemsCount = () => {
-    return Object.values(selectedItems).reduce((sum, count) => sum + count, 0)
-  }
-
-  const generateShareText = () => {
-    if (!currentPreset) return ""
-
-    let shareText = `🛒 ${currentPreset.name}:\n\n`
-
-    currentPreset.categories.forEach((category) => {
-      const categoryItems = category.items.filter((item) => selectedItems[item.id] > 0)
-      if (categoryItems.length > 0) {
-        shareText += `${category.name}:\n`
-        categoryItems.forEach((item) => {
-          shareText += `• ${item.emoji} ${item.name} x${selectedItems[item.id]}\n`
-        })
-        shareText += "\n"
-      }
+      return { ...prev, [k(catId, itemId)]: count }
     })
 
-    shareText += "Created with Tap-Tap-Share 🍽️"
-    return shareText
+  const totalCount = Object.values(sel).reduce((s, v) => s + v, 0)
+
+  // ── Share ──────────────────────────────────────────────────────────────────
+
+  const handleShare = async () => {
+    if (!currentPreset) return
+    const hash = encodeList(currentPreset, sel)
+    const url = `${window.location.origin}${window.location.pathname}#list=${hash}`
+    const text = buildShareText(currentPreset, sel, url)
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${currentPreset.name} list`, text, url })
+      } else {
+        await navigator.clipboard.writeText(text)
+        toast.success("List copied to clipboard!")
+      }
+    } catch {
+      await navigator.clipboard.writeText(text)
+      toast.success("List copied to clipboard!")
+    }
   }
 
-  const handleCopyToClipboard = async () => {
-    const shareText = generateShareText()
-    await navigator.clipboard.writeText(shareText)
-    setShowCopyNotification(true)
-    setTimeout(() => setShowCopyNotification(false), 2000)
+  // ── Add item to category ───────────────────────────────────────────────────
+
+  const handleAddItem = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newItemName.trim() || !addingToCat || !currentPreset) return
+    const newItem: Item = {
+      id: `item-${Date.now()}`,
+      name: newItemName.trim(),
+      emoji: newItemEmoji.trim() || "📦",
+    }
+    const updated: Preset = {
+      ...currentPreset,
+      categories: currentPreset.categories.map((cat) =>
+        cat.id === addingToCat ? { ...cat, items: [...cat.items, newItem] } : cat,
+      ),
+    }
+    setPresets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+    setCurrentPreset(updated)
+    setNewItemEmoji("")
+    setNewItemName("")
+    setAddingToCat(null)
   }
 
-  const createNewPreset = () => {
+  // ── Presets ────────────────────────────────────────────────────────────────
+
+  const createPreset = () => {
     if (!newPresetName.trim()) return
-
     const newPreset: Preset = {
       id: `preset-${Date.now()}`,
-      name: newPresetName,
-      categories: [
-        {
-          id: `category-${Date.now()}`,
-          name: "Items",
-          color: "#6366f1",
-          items: [],
-        },
-      ],
+      name: newPresetName.trim(),
+      categories: [{ id: `cat-${Date.now()}`, name: "Items", color: "#6366f1", items: [] }],
     }
-
     setPresets((prev) => [...prev, newPreset])
     setCurrentPreset(newPreset)
+    setSel({})
     setNewPresetName("")
     setShowNewPreset(false)
-    setSelectedItems({})
+    toast.success(`"${newPreset.name}" created — tap + in any category to add items.`)
   }
 
+  const switchPreset = (id: string) => {
+    const preset = presets.find((p) => p.id === id)
+    setCurrentPreset(preset ?? null)
+    setSel({})
+  }
+
+  // ── Export / Import ────────────────────────────────────────────────────────
+
   const exportPresets = () => {
-    const dataStr = JSON.stringify(presets, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = "tap-tap-share-presets.json"
-    link.click()
+    const blob = new Blob([JSON.stringify(presets, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "tap-tap-share-presets.json"
+    a.click()
     URL.revokeObjectURL(url)
   }
 
-  const importPresets = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const importPresets = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file) return
-
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = (ev) => {
       try {
-        const importedPresets = JSON.parse(e.target?.result as string)
-        setPresets(importedPresets)
-        setCurrentPreset(importedPresets[0] || null)
-        setSelectedItems({})
-      } catch (error) {
-        alert("Invalid file format")
+        const parsed: unknown = JSON.parse(ev.target?.result as string)
+        const result = PresetsSchema.safeParse(parsed)
+        if (!result.success) {
+          toast.error("Invalid preset file — please check the format.")
+          return
+        }
+        setPresets(result.data)
+        setCurrentPreset(result.data[0] ?? null)
+        setSel({})
+        toast.success("Presets imported!")
+      } catch {
+        toast.error("Could not read file.")
       }
     }
     reader.readAsText(file)
   }
 
-  const handleCookieAccept = () => {
-    localStorage.setItem("tap-tap-share-cookie-accepted", "true")
-    setShowCookieWarning(false)
-  }
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 text-foreground">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-foreground">
+      {/* Shared-list modal — shown when URL contains a #list= hash */}
+      {sharedList && (
+        <Dialog open onOpenChange={() => setSharedList(null)}>
+          <DialogContent className="bg-card/95 backdrop-blur-md border-border max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">🛒 {sharedList.n}</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-64 overflow-y-auto space-y-3 text-sm">
+              {(() => {
+                const groups: Record<string, SharedItem[]> = {}
+                sharedList.i.forEach((item) => {
+                  if (!groups[item.c]) groups[item.c] = []
+                  groups[item.c].push(item)
+                })
+                return Object.entries(groups).map(([cat, items]) => (
+                  <div key={cat}>
+                    <p className="font-semibold text-muted-foreground text-xs uppercase tracking-wide mb-1">
+                      {cat}
+                    </p>
+                    {items.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 py-0.5">
+                        <span>{item.e}</span>
+                        <span>{item.l}</span>
+                        <span className="ml-auto text-muted-foreground">×{item.q}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              })()}
+            </div>
+            <Button onClick={() => setSharedList(null)} className="w-full bg-primary hover:bg-primary/90">
+              Build your own list
+            </Button>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Header */}
-      <header className="bg-card/90 backdrop-blur-md border-b border-border/50 p-4 shadow-sm">
+      <header className="bg-card/90 backdrop-blur-md border-b border-border/50 p-4 shadow-sm sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
@@ -324,7 +496,20 @@ export default function TapTapShare() {
               Tap-Tap-Share
             </h1>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex gap-1 items-center">
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-muted/50"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                aria-label="Toggle dark mode"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            )}
+
             <Dialog open={showSettings} onOpenChange={setShowSettings}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="hover:bg-muted/50">
@@ -337,7 +522,7 @@ export default function TapTapShare() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-medium mb-2 font-serif">Manage Presets</h3>
+                    <h3 className="font-medium mb-2 font-serif text-sm">Presets</h3>
                     <div className="flex gap-2">
                       <Button
                         onClick={exportPresets}
@@ -353,7 +538,7 @@ export default function TapTapShare() {
                           variant="outline"
                           size="sm"
                           asChild
-                          className="border-border hover:bg-muted/70 bg-transparent"
+                          className="border-border hover:bg-muted/70 bg-transparent cursor-pointer"
                         >
                           <span>
                             <Upload className="w-4 h-4 mr-2" />
@@ -372,112 +557,105 @@ export default function TapTapShare() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 pb-32">
-        {/* Preset Selector */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <select
-              value={currentPreset?.id || ""}
-              onChange={(e) => {
-                const preset = presets.find((p) => p.id === e.target.value)
-                setCurrentPreset(preset || null)
-                setSelectedItems({})
-              }}
-              className="flex-1 bg-card/80 backdrop-blur-md border border-border rounded-lg px-3 py-2 text-card-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            >
-              {presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-            <Dialog open={showNewPreset} onOpenChange={setShowNewPreset}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-lg">
-                  <Plus className="w-4 h-4" />
+        {/* Preset selector */}
+        <div className="flex items-center gap-2 mb-6">
+          <select
+            value={currentPreset?.id ?? ""}
+            onChange={(e) => switchPreset(e.target.value)}
+            className="flex-1 bg-card/80 backdrop-blur-md border border-border rounded-lg px-3 py-2 text-card-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          >
+            {presets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <Dialog open={showNewPreset} onOpenChange={setShowNewPreset}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-lg">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card/95 backdrop-blur-md border-border">
+              <DialogHeader>
+                <DialogTitle className="font-serif">New Preset</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="e.g. BBQ Party, Camping Trip…"
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && createPreset()}
+                  className="bg-input border-border focus:ring-2 focus:ring-primary/20"
+                  autoFocus
+                />
+                <Button onClick={createPreset} className="w-full bg-primary hover:bg-primary/90">
+                  Create
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card/95 backdrop-blur-md border-border">
-                <DialogHeader>
-                  <DialogTitle className="font-serif">Create New Preset</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input
-                    placeholder="Preset name"
-                    value={newPresetName}
-                    onChange={(e) => setNewPresetName(e.target.value)}
-                    className="bg-input border-border focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  />
-                  <Button onClick={createNewPreset} className="w-full bg-primary hover:bg-primary/90">
-                    Create Preset
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Categories and Items */}
+        {/* Category grid */}
         {currentPreset && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {currentPreset.categories.map((category) => (
+            {currentPreset.categories.map((cat) => (
               <Card
-                key={category.id}
-                className="bg-card/80 backdrop-blur-md border-border/50 shadow-lg hover:shadow-xl transition-all duration-300"
+                key={cat.id}
+                className="bg-card/80 backdrop-blur-md border-border/50 shadow-lg hover:shadow-xl transition-shadow"
               >
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-serif flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                    {category.name}
+                  <CardTitle className="text-base font-serif flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                    {cat.name}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                    {category.items.map((item) => {
-                      const count = selectedItems[item.id] || 0
-                      const isSelected = count > 0
 
+                <CardContent className="space-y-3">
+                  {/* Items */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {cat.items.map((item) => {
+                      const count = sel[k(cat.id, item.id)] ?? 0
+                      const isSelected = count > 0
                       return (
                         <div
                           key={item.id}
-                          className={`
-                            relative p-3 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-105
-                            h-20 flex flex-col justify-between
-                            ${
-                              isSelected
-                                ? `bg-gradient-to-br from-[${category.color}] to-[${category.color}]/80 text-white shadow-lg`
-                                : `bg-gradient-to-br from-[${category.color}]/10 to-[${category.color}]/5 hover:from-[${category.color}]/20 hover:to-[${category.color}]/10 backdrop-blur-sm border border-[${category.color}]/20`
-                            }`}
-                          onClick={() => handleItemTap(item.id)}
+                          className="relative p-3 rounded-xl cursor-pointer transition-all duration-200 hover:scale-105 h-20 flex flex-col justify-between select-none"
+                          style={
+                            isSelected
+                              ? { backgroundColor: cat.color, color: "white" }
+                              : {
+                                  backgroundColor: hexToRgba(cat.color, 0.08),
+                                  border: `1px solid ${hexToRgba(cat.color, 0.2)}`,
+                                }
+                          }
+                          onClick={() => tap(cat.id, item.id)}
                         >
-                          <div className="flex items-start gap-2 min-h-0">
+                          <div className="flex items-start gap-1.5 min-h-0">
                             <span className="text-xl flex-shrink-0">{item.emoji}</span>
-                            <span className="text-sm font-medium select-none leading-tight break-words overflow-hidden text-ellipsis line-clamp-2 flex-1">
-                              {item.name}
-                            </span>
+                            <span className="text-xs font-medium leading-tight line-clamp-2">{item.name}</span>
                           </div>
-
-                          {/* Controls row - always reserve space */}
                           <div className="flex items-center justify-center gap-2 h-7">
                             {isSelected ? (
                               <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleItemDecrease(item.id)
+                                    dec(cat.id, item.id)
                                   }}
-                                  className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold hover:bg-white/30 transition-colors select-none"
+                                  className="w-6 h-6 bg-white/25 rounded-full flex items-center justify-center text-sm font-bold hover:bg-white/40 transition-colors"
                                 >
-                                  -
+                                  −
                                 </button>
-                                <span className="text-base font-bold min-w-[1.5rem] text-center px-1 select-none">
-                                  {count}
-                                </span>
+                                <span className="text-sm font-bold min-w-[1rem] text-center">{count}</span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleItemTap(item.id)
+                                    tap(cat.id, item.id)
                                   }}
-                                  className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold hover:bg-white/30 transition-colors select-none"
+                                  className="w-6 h-6 bg-white/25 rounded-full flex items-center justify-center text-sm font-bold hover:bg-white/40 transition-colors"
                                 >
                                   +
                                 </button>
@@ -490,6 +668,50 @@ export default function TapTapShare() {
                       )
                     })}
                   </div>
+
+                  {/* Inline add-item form */}
+                  {addingToCat === cat.id ? (
+                    <form onSubmit={handleAddItem} className="flex gap-2 pt-1">
+                      <Input
+                        placeholder="🍎"
+                        value={newItemEmoji}
+                        onChange={(e) => setNewItemEmoji(e.target.value)}
+                        className="w-14 text-center bg-input text-base"
+                        maxLength={2}
+                        autoFocus
+                      />
+                      <Input
+                        placeholder="Item name"
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        className="flex-1 bg-input"
+                      />
+                      <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 px-2">
+                        ✓
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setAddingToCat(null)
+                          setNewItemEmoji("")
+                          setNewItemName("")
+                        }}
+                        className="px-2"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => setAddingToCat(cat.id)}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 py-1 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add item
+                    </button>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -497,58 +719,45 @@ export default function TapTapShare() {
         )}
       </main>
 
-      {getSelectedItemsCount() > 0 && (
+      {/* Bottom action bar — visible when items are selected */}
+      {totalCount > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border/50 shadow-lg z-30">
-          <div className="max-w-4xl mx-auto p-4">
-            <div className="flex gap-2 justify-center">
-              <Dialog open={showPreview} onOpenChange={setShowPreview}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="border-border hover:bg-muted/70 bg-transparent">
-                    Preview
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-card/95 backdrop-blur-md border-border max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="font-serif">List Preview</DialogTitle>
-                  </DialogHeader>
-                  <div className="max-h-96 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg border border-border/30">
-                      {generateShareText()}
-                    </pre>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button
-                onClick={handleCopyToClipboard}
-                size="sm"
-                className="bg-primary hover:bg-primary/90 flex items-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copy to Clipboard
-              </Button>
-            </div>
+          <div className="max-w-4xl mx-auto p-4 flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSel({})}
+              className="border-border hover:bg-muted/70 bg-transparent gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </Button>
+            <Button
+              onClick={handleShare}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 gap-2 flex-1 max-w-xs"
+            >
+              <Share2 className="w-4 h-4" />
+              Share List ({totalCount} item{totalCount !== 1 ? "s" : ""})
+            </Button>
           </div>
         </div>
       )}
 
-      {showCopyNotification && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in slide-in-from-right">
-          <div className="flex items-center gap-2">
-            <Copy className="w-4 h-4" />
-            <span className="text-sm font-medium">Copied to clipboard!</span>
-          </div>
-        </div>
-      )}
-
-      {/* Privacy warning positioned above share area */}
-      {showCookieWarning && (
+      {/* Local-storage notice */}
+      {showCookieNotice && (
         <Alert className="fixed bottom-20 left-4 right-4 z-50 bg-card/95 backdrop-blur-md border-border shadow-lg max-w-4xl mx-auto">
           <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <span className="text-sm text-card-foreground">
-              This app uses local storage to save your lists and preferences. No data is sent to external servers.
-            </span>
-            <Button onClick={handleCookieAccept} size="sm" className="bg-primary hover:bg-primary/90 shrink-0">
-              Accept
+            <span className="text-sm">This app saves your lists locally. No data ever leaves your device.</span>
+            <Button
+              onClick={() => {
+                localStorage.setItem("tap-tap-share-cookie-accepted", "true")
+                setShowCookieNotice(false)
+              }}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 shrink-0"
+            >
+              Got it
             </Button>
           </AlertDescription>
         </Alert>
