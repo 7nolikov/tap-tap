@@ -89,13 +89,26 @@ function encodeList(preset: Preset, sel: Record<string, number>): string {
   return btoa(encodeURIComponent(JSON.stringify({ n: preset.name, i: items })))
 }
 
-function decodeList(hash: string): ShareData | null {
-  if (!hash.startsWith("#list=")) return null
-  try {
-    return JSON.parse(decodeURIComponent(atob(hash.slice(6)))) as ShareData
-  } catch {
-    return null
+/** Decode a shared list from URL search params (?list=...) with fallback to legacy hash fragment (#list=...) */
+function decodeList(search: string, hash: string): ShareData | null {
+  // Primary path: query parameter survives link shorteners, WhatsApp, Telegram previews
+  const encoded = new URLSearchParams(search).get("list")
+  if (encoded) {
+    try {
+      return JSON.parse(decodeURIComponent(atob(encoded))) as ShareData
+    } catch {
+      return null
+    }
   }
+  // Fallback: legacy hash fragment (old shared links still work)
+  if (hash.startsWith("#list=")) {
+    try {
+      return JSON.parse(decodeURIComponent(atob(hash.slice(6)))) as ShareData
+    } catch {
+      return null
+    }
+  }
+  return null
 }
 
 function buildShareText(preset: Preset, sel: Record<string, number>, url: string): string {
@@ -112,6 +125,32 @@ function buildShareText(preset: Preset, sel: Record<string, number>, url: string
   })
   text += `📱 Open list: ${url}`
   return text
+}
+
+const PRESET_COLORS = ["#3b82f6", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#d97706"]
+
+/** Reconstruct a saveable Preset from a received shared list */
+function sharedToPreset(data: ShareData): Preset {
+  const groups: Record<string, SharedItem[]> = {}
+  data.i.forEach((item) => {
+    if (!groups[item.c]) groups[item.c] = []
+    groups[item.c].push(item)
+  })
+  const ts = Date.now()
+  return {
+    id: `preset-${ts}`,
+    name: data.n,
+    categories: Object.entries(groups).map(([name, items], idx) => ({
+      id: `cat-${ts}-${idx}`,
+      name,
+      color: PRESET_COLORS[idx % PRESET_COLORS.length],
+      items: items.map((item, iIdx) => ({
+        id: `item-${ts}-${idx}-${iIdx}`,
+        name: item.l,
+        emoji: item.e,
+      })),
+    })),
+  }
 }
 
 // ─── Default preset ───────────────────────────────────────────────────────────
@@ -303,8 +342,8 @@ export default function TapTapShare() {
       setShowCookieNotice(true)
     }
 
-    // Decode shared list from URL hash
-    const shared = decodeList(window.location.hash)
+    // Decode shared list from URL (?list=... or legacy #list=...)
+    const shared = decodeList(window.location.search, window.location.hash)
     if (shared) {
       setSharedList(shared)
       window.history.replaceState(null, "", window.location.pathname)
@@ -348,7 +387,8 @@ export default function TapTapShare() {
   const handleShare = async () => {
     if (!currentPreset) return
     const hash = encodeList(currentPreset, sel)
-    const url = `${window.location.origin}${window.location.pathname}#list=${hash}`
+    // Use query param (?list=) so the link survives WhatsApp/Telegram previews and URL shorteners
+    const url = `${window.location.origin}${window.location.pathname}?list=${hash}`
     const text = buildShareText(currentPreset, sel, url)
     try {
       if (navigator.share) {
@@ -361,6 +401,16 @@ export default function TapTapShare() {
       await navigator.clipboard.writeText(text)
       toast.success("List copied to clipboard!")
     }
+  }
+
+  const saveSharedAsPreset = () => {
+    if (!sharedList) return
+    const newPreset = sharedToPreset(sharedList)
+    setPresets((prev) => [...prev, newPreset])
+    setCurrentPreset(newPreset)
+    setSel({})
+    setSharedList(null)
+    toast.success(`"${newPreset.name}" saved — tap items to build your list!`)
   }
 
   // ── Add item to category ───────────────────────────────────────────────────
@@ -478,9 +528,14 @@ export default function TapTapShare() {
                 ))
               })()}
             </div>
-            <Button onClick={() => setSharedList(null)} className="w-full bg-primary hover:bg-primary/90">
-              Build your own list
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button onClick={saveSharedAsPreset} className="w-full bg-primary hover:bg-primary/90">
+                Save as my preset
+              </Button>
+              <Button onClick={() => setSharedList(null)} variant="outline" className="w-full border-border hover:bg-muted/70 bg-transparent">
+                Build your own list
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}
