@@ -128,8 +128,8 @@ function decodeList(search: string, hash: string): DecodeResult {
   }
 }
 
-const ATTRIBUTION = "\n\n— Built with TapTap · tap-tap.app\nNo sign-up. No server. Your list travels as a link."
 const APP_URL = "https://7nolikov.github.io/tap-tap/"
+const ATTRIBUTION = `\n\n— Built with TapTap · ${APP_URL}\nNo sign-up. No server. Your list travels as a link.`
 
 function buildShareText(preset: Preset, sel: Record<string, number>, url: string): string {
   let text = `🛒 ${preset.name}:\n\n`
@@ -747,6 +747,519 @@ const defaultPresets: Preset[] = [
       },
     ],
   },
+  {
+    id: "thanksgiving",
+    name: "Thanksgiving Dinner",
+    categories: [
+      {
+        id: "thanksgiving-main",
+        name: "Turkey & Mains",
+        color: "#d97706",
+        items: [
+          { id: "whole-turkey", name: "Whole Turkey", emoji: "🦃" },
+          { id: "ham", name: "Glazed Ham", emoji: "🥩" },
+          { id: "turkey-breast", name: "Turkey Breast", emoji: "🍗" },
+          { id: "beef-roast", name: "Beef Roast", emoji: "🥩" },
+        ],
+      },
+      {
+        id: "thanksgiving-sides",
+        name: "Sides",
+        color: "#10b981",
+        items: [
+          { id: "stuffing", name: "Stuffing Mix", emoji: "🍞" },
+          { id: "mashed-pot-th", name: "Potatoes", emoji: "🥔" },
+          { id: "sweet-potato-th", name: "Sweet Potatoes", emoji: "🍠" },
+          { id: "green-beans", name: "Green Bean Casserole", emoji: "🫘" },
+          { id: "cranberry-sauce", name: "Cranberry Sauce", emoji: "🫙" },
+          { id: "gravy", name: "Gravy Mix", emoji: "🫙" },
+          { id: "dinner-rolls", name: "Dinner Rolls", emoji: "🍞" },
+          { id: "corn-th", name: "Corn", emoji: "🌽" },
+          { id: "brussel-sprouts", name: "Brussels Sprouts", emoji: "🥦" },
+          { id: "butter-th", name: "Butter", emoji: "🧈" },
+        ],
+      },
+      {
+        id: "thanksgiving-desserts",
+        name: "Pies & Desserts",
+        color: "#ef4444",
+        items: [
+          { id: "pumpkin-pie", name: "Pumpkin Pie", emoji: "🥧" },
+          { id: "pecan-pie", name: "Pecan Pie", emoji: "🥧" },
+          { id: "apple-pie", name: "Apple Pie", emoji: "🥧" },
+          { id: "whipped-cream-th", name: "Whipped Cream", emoji: "🍦" },
+          { id: "vanilla-ice-cream", name: "Vanilla Ice Cream", emoji: "🍨" },
+        ],
+      },
+      {
+        id: "thanksgiving-drinks",
+        name: "Drinks",
+        color: "#8b5cf6",
+        items: [
+          { id: "red-wine-th", name: "Red Wine", emoji: "🍷" },
+          { id: "white-wine-th", name: "White Wine", emoji: "🥂" },
+          { id: "sparkling-cider", name: "Sparkling Cider", emoji: "🍾" },
+          { id: "apple-cider", name: "Apple Cider", emoji: "🍎" },
+          { id: "coffee-th", name: "Coffee", emoji: "☕" },
+          { id: "tea-th", name: "Tea", emoji: "🍵" },
+        ],
+      },
+      {
+        id: "thanksgiving-extras",
+        name: "Table Extras",
+        color: "#ec4899",
+        items: [
+          { id: "candles-th", name: "Candles", emoji: "🕯️" },
+          { id: "napkins-th", name: "Cloth Napkins", emoji: "🧻" },
+          { id: "table-cloth-th", name: "Tablecloth", emoji: "🍽️" },
+          { id: "foil-th", name: "Aluminum Foil", emoji: "🫙" },
+          { id: "zip-bags-th", name: "Storage Bags (leftovers)", emoji: "🫙" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "game-day",
+    name: "Game Day Party",
+    categories: [
+      {
+        id: "gameday-food",
+        name: "Food",
+        color: "#ef4444",
+        items: [
+          { id: "chicken-wings-gd", name: "Chicken Wings", emoji: "🍗" },
+          { id: "pizza-gd", name: "Pizza", emoji: "🍕" },
+          { id: "hot-dogs-gd", name: "Hot Dogs", emoji: "🌭" },
+          { id: "sliders", name: "Slider Buns", emoji: "🍔" },
+          { id: "ground-beef-gd", name: "Ground Beef", emoji: "🥩" },
+          { id: "frozen-pizza", name: "Frozen Pizza", emoji: "🍕" },
+          { id: "sausages-gd", name: "Sausages", emoji: "🌭" },
+        ],
+      },
+      {
+        id: "gameday-snacks",
+        name: "Snacks & Dips",
+        color: "#f59e0b",
+        items: [
+          { id: "tortilla-chips", name: "Tortilla Chips", emoji: "🌮" },
+          { id: "guacamole", name: "Guacamole", emoji: "🥑" },
+          { id: "salsa", name: "Salsa", emoji: "🍅" },
+          { id: "queso-dip", name: "Queso Dip", emoji: "🧀" },
+          { id: "buffalo-sauce", name: "Buffalo Sauce", emoji: "🌶️" },
+          { id: "ranch-dip", name: "Ranch Dressing", emoji: "🫙" },
+          { id: "celery-sticks", name: "Celery Sticks", emoji: "🥬" },
+          { id: "chips-gd", name: "Chips", emoji: "🍟" },
+          { id: "popcorn-gd", name: "Popcorn", emoji: "🍿" },
+          { id: "pretzels-gd", name: "Pretzels", emoji: "🥨" },
+        ],
+      },
+      {
+        id: "gameday-drinks",
+        name: "Drinks",
+        color: "#8b5cf6",
+        items: [
+          { id: "beer-gd", name: "Beer (case)", emoji: "🍺" },
+          { id: "soda-gd", name: "Soda", emoji: "🥤" },
+          { id: "sports-drinks", name: "Sports Drinks", emoji: "⚡" },
+          { id: "water-gd", name: "Water", emoji: "💧" },
+          { id: "ice-gd", name: "Ice", emoji: "🧊" },
+        ],
+      },
+      {
+        id: "gameday-supplies",
+        name: "Party Supplies",
+        color: "#06b6d4",
+        items: [
+          { id: "paper-plates-gd", name: "Paper Plates", emoji: "🍽️" },
+          { id: "cups-gd", name: "Plastic Cups", emoji: "🥤" },
+          { id: "napkins-gd", name: "Napkins", emoji: "🧻" },
+          { id: "toothpicks-gd", name: "Toothpicks", emoji: "🪥" },
+          { id: "trash-bags-gd", name: "Trash Bags", emoji: "🗑️" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "moving-house",
+    name: "Moving House",
+    categories: [
+      {
+        id: "moving-packing",
+        name: "Packing Supplies",
+        color: "#78350f",
+        items: [
+          { id: "boxes-sm", name: "Small Boxes", emoji: "📦" },
+          { id: "boxes-lg", name: "Large Boxes", emoji: "📦" },
+          { id: "packing-tape", name: "Packing Tape", emoji: "🗃️" },
+          { id: "bubble-wrap", name: "Bubble Wrap", emoji: "📦" },
+          { id: "markers-mv", name: "Markers", emoji: "🖊️" },
+          { id: "labels", name: "Labels / Stickers", emoji: "📝" },
+          { id: "stretch-wrap", name: "Stretch Wrap", emoji: "🌀" },
+          { id: "furniture-pads", name: "Furniture Pads", emoji: "🛋️" },
+          { id: "trash-bags-mv", name: "Trash Bags", emoji: "🗑️" },
+          { id: "zip-bags-mv", name: "Zip Bags", emoji: "🫙" },
+        ],
+      },
+      {
+        id: "moving-cleaning",
+        name: "Cleaning",
+        color: "#06b6d4",
+        items: [
+          { id: "all-purpose-cleaner", name: "All-Purpose Cleaner", emoji: "🧴" },
+          { id: "mop", name: "Mop", emoji: "🧹" },
+          { id: "broom", name: "Broom & Dustpan", emoji: "🧹" },
+          { id: "paper-towels-mv", name: "Paper Towels", emoji: "🧻" },
+          { id: "sponges-mv", name: "Sponges", emoji: "🧽" },
+          { id: "dish-soap-mv", name: "Dish Soap", emoji: "🧼" },
+          { id: "toilet-bowl-cleaner", name: "Toilet Cleaner", emoji: "🚽" },
+          { id: "glass-cleaner", name: "Glass Cleaner", emoji: "🪟" },
+          { id: "rubber-gloves", name: "Rubber Gloves", emoji: "🧤" },
+        ],
+      },
+      {
+        id: "moving-first-night",
+        name: "First Night Essentials",
+        color: "#10b981",
+        items: [
+          { id: "toilet-paper-mv", name: "Toilet Paper", emoji: "🧻" },
+          { id: "hand-soap-mv", name: "Hand Soap", emoji: "🧼" },
+          { id: "towels", name: "Towels", emoji: "🧺" },
+          { id: "coffee-mv", name: "Coffee", emoji: "☕" },
+          { id: "instant-noodles-mv", name: "Instant Noodles", emoji: "🍜" },
+          { id: "snacks-mv", name: "Snacks", emoji: "🍫" },
+          { id: "water-mv", name: "Water Bottles", emoji: "💧" },
+          { id: "phone-charger", name: "Phone Charger", emoji: "🔌" },
+          { id: "bedding", name: "Bedding / Sheets", emoji: "🛏️" },
+        ],
+      },
+      {
+        id: "moving-tools",
+        name: "Tools",
+        color: "#6366f1",
+        items: [
+          { id: "screwdriver", name: "Screwdriver Set", emoji: "🪛" },
+          { id: "box-cutter", name: "Box Cutter", emoji: "✂️" },
+          { id: "hammer", name: "Hammer", emoji: "🔨" },
+          { id: "allen-wrench", name: "Allen Wrench Set", emoji: "🔧" },
+          { id: "measuring-tape", name: "Measuring Tape", emoji: "📏" },
+          { id: "wall-anchors", name: "Wall Anchors & Screws", emoji: "🪛" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cocktail-party",
+    name: "Cocktail Party",
+    categories: [
+      {
+        id: "cocktail-spirits",
+        name: "Spirits",
+        color: "#8b5cf6",
+        items: [
+          { id: "vodka", name: "Vodka", emoji: "🍸" },
+          { id: "gin", name: "Gin", emoji: "🍸" },
+          { id: "rum", name: "Rum", emoji: "🥃" },
+          { id: "whiskey", name: "Whiskey", emoji: "🥃" },
+          { id: "tequila", name: "Tequila", emoji: "🥃" },
+          { id: "champagne-cp", name: "Champagne", emoji: "🍾" },
+          { id: "prosecco", name: "Prosecco", emoji: "🥂" },
+          { id: "red-wine-cp", name: "Red Wine", emoji: "🍷" },
+          { id: "white-wine-cp", name: "White Wine", emoji: "🥂" },
+        ],
+      },
+      {
+        id: "cocktail-mixers",
+        name: "Mixers",
+        color: "#06b6d4",
+        items: [
+          { id: "tonic-water", name: "Tonic Water", emoji: "💧" },
+          { id: "soda-water", name: "Soda Water", emoji: "💧" },
+          { id: "ginger-beer", name: "Ginger Beer", emoji: "🫙" },
+          { id: "oj-cp", name: "Orange Juice", emoji: "🍊" },
+          { id: "cranberry-juice", name: "Cranberry Juice", emoji: "🍷" },
+          { id: "lime-juice", name: "Lime Juice", emoji: "🍋" },
+          { id: "simple-syrup", name: "Simple Syrup", emoji: "🫙" },
+          { id: "grenadine", name: "Grenadine", emoji: "🫙" },
+          { id: "triple-sec", name: "Triple Sec", emoji: "🍊" },
+        ],
+      },
+      {
+        id: "cocktail-garnishes",
+        name: "Garnishes & Food",
+        color: "#10b981",
+        items: [
+          { id: "lemons-cp", name: "Lemons", emoji: "🍋" },
+          { id: "limes-cp", name: "Limes", emoji: "🍋" },
+          { id: "olives-cp", name: "Cocktail Olives", emoji: "🫒" },
+          { id: "cherries-cp", name: "Maraschino Cherries", emoji: "🍒" },
+          { id: "mint-cp", name: "Fresh Mint", emoji: "🌿" },
+          { id: "cheese-cp", name: "Cheese Board", emoji: "🧀" },
+          { id: "crackers-cp", name: "Crackers", emoji: "🍘" },
+          { id: "grapes-cp", name: "Grapes", emoji: "🍇" },
+          { id: "charcuterie", name: "Charcuterie", emoji: "🥩" },
+        ],
+      },
+      {
+        id: "cocktail-bar",
+        name: "Bar Supplies",
+        color: "#f59e0b",
+        items: [
+          { id: "ice-cp", name: "Ice (bag)", emoji: "🧊" },
+          { id: "cocktail-picks", name: "Cocktail Picks", emoji: "🪥" },
+          { id: "napkins-cp", name: "Cocktail Napkins", emoji: "🧻" },
+          { id: "straws-cp", name: "Straws", emoji: "🥤" },
+          { id: "candles-cp", name: "Candles", emoji: "🕯️" },
+          { id: "coasters", name: "Coasters", emoji: "🪵" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "road-trip",
+    name: "Road Trip Snacks",
+    categories: [
+      {
+        id: "roadtrip-savory",
+        name: "Savory Snacks",
+        color: "#d97706",
+        items: [
+          { id: "beef-jerky", name: "Beef Jerky", emoji: "🥩" },
+          { id: "chips-rt", name: "Chips", emoji: "🍟" },
+          { id: "pretzels-rt", name: "Pretzels", emoji: "🥨" },
+          { id: "crackers-rt", name: "Crackers", emoji: "🍘" },
+          { id: "mixed-nuts-rt", name: "Mixed Nuts", emoji: "🌰" },
+          { id: "string-cheese", name: "String Cheese", emoji: "🧀" },
+          { id: "popcorn-rt", name: "Popcorn", emoji: "🍿" },
+          { id: "pita-chips", name: "Pita Chips", emoji: "🫓" },
+          { id: "sunflower-seeds", name: "Sunflower Seeds", emoji: "🌻" },
+        ],
+      },
+      {
+        id: "roadtrip-sweet",
+        name: "Sweet Snacks",
+        color: "#ec4899",
+        items: [
+          { id: "granola-bars-rt", name: "Granola Bars", emoji: "🍫" },
+          { id: "chocolate-rt", name: "Chocolate", emoji: "🍫" },
+          { id: "gummy-bears", name: "Gummy Bears", emoji: "🐻" },
+          { id: "cookies-rt", name: "Cookies", emoji: "🍪" },
+          { id: "dried-fruit-rt", name: "Dried Fruit", emoji: "🍇" },
+          { id: "fruit-snacks", name: "Fruit Snacks", emoji: "🍬" },
+          { id: "pb-crackers", name: "PB Crackers", emoji: "🥜" },
+        ],
+      },
+      {
+        id: "roadtrip-drinks",
+        name: "Drinks",
+        color: "#06b6d4",
+        items: [
+          { id: "water-rt", name: "Water Bottles", emoji: "💧" },
+          { id: "coffee-rt", name: "Coffee (thermos)", emoji: "☕" },
+          { id: "energy-drinks", name: "Energy Drinks", emoji: "⚡" },
+          { id: "sports-drinks-rt", name: "Sports Drinks", emoji: "🏃" },
+          { id: "juice-boxes-rt", name: "Juice Boxes", emoji: "🧃" },
+          { id: "soda-rt", name: "Soda Cans", emoji: "🥤" },
+        ],
+      },
+      {
+        id: "roadtrip-essentials",
+        name: "Car Essentials",
+        color: "#6366f1",
+        items: [
+          { id: "wet-wipes", name: "Wet Wipes", emoji: "🧻" },
+          { id: "paper-towels-rt", name: "Paper Towels", emoji: "🧻" },
+          { id: "garbage-bags-rt", name: "Small Trash Bags", emoji: "🗑️" },
+          { id: "hand-sanitizer", name: "Hand Sanitizer", emoji: "🧴" },
+          { id: "napkins-rt", name: "Napkins", emoji: "🧻" },
+          { id: "ice-pack", name: "Ice Pack / Cooler", emoji: "🧊" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "gym-fitness",
+    name: "Gym & Fitness",
+    categories: [
+      {
+        id: "gym-supplements",
+        name: "Supplements",
+        color: "#ef4444",
+        items: [
+          { id: "protein-powder", name: "Protein Powder", emoji: "💪" },
+          { id: "creatine", name: "Creatine", emoji: "⚗️" },
+          { id: "pre-workout", name: "Pre-Workout", emoji: "⚡" },
+          { id: "bcaas", name: "BCAAs", emoji: "🧪" },
+          { id: "multivitamins", name: "Multivitamins", emoji: "💊" },
+          { id: "fish-oil", name: "Fish Oil / Omega-3", emoji: "🐟" },
+          { id: "vitamin-d", name: "Vitamin D", emoji: "☀️" },
+          { id: "magnesium", name: "Magnesium", emoji: "💊" },
+          { id: "electrolytes-gym", name: "Electrolyte Powder", emoji: "⚡" },
+        ],
+      },
+      {
+        id: "gym-food",
+        name: "Meal Proteins",
+        color: "#10b981",
+        items: [
+          { id: "chicken-gym", name: "Chicken Breast", emoji: "🍗" },
+          { id: "eggs-gym", name: "Eggs", emoji: "🥚" },
+          { id: "greek-yogurt-gym", name: "Greek Yogurt", emoji: "🥛" },
+          { id: "tuna-gym", name: "Canned Tuna", emoji: "🐟" },
+          { id: "cottage-cheese-gym", name: "Cottage Cheese", emoji: "🧀" },
+          { id: "salmon-gym", name: "Salmon", emoji: "🐟" },
+          { id: "turkey-gym", name: "Ground Turkey", emoji: "🦃" },
+          { id: "tofu-gym", name: "Tofu", emoji: "🫙" },
+        ],
+      },
+      {
+        id: "gym-carbs",
+        name: "Carbs & Fuel",
+        color: "#f59e0b",
+        items: [
+          { id: "oats-gym", name: "Oats", emoji: "🥣" },
+          { id: "brown-rice-gym", name: "Brown Rice", emoji: "🍚" },
+          { id: "sweet-potato-gym", name: "Sweet Potatoes", emoji: "🍠" },
+          { id: "banana-gym", name: "Bananas", emoji: "🍌" },
+          { id: "whole-wheat-bread-gym", name: "Whole Wheat Bread", emoji: "🍞" },
+          { id: "quinoa-gym", name: "Quinoa", emoji: "🥣" },
+        ],
+      },
+      {
+        id: "gym-snacks",
+        name: "Gym Snacks & Gear",
+        color: "#8b5cf6",
+        items: [
+          { id: "protein-bars", name: "Protein Bars", emoji: "🍫" },
+          { id: "protein-shakes", name: "RTD Protein Shakes", emoji: "🥛" },
+          { id: "nuts-gym", name: "Mixed Nuts", emoji: "🌰" },
+          { id: "peanut-butter-gym", name: "Peanut Butter", emoji: "🥜" },
+          { id: "water-bottle-gym", name: "Water Bottle", emoji: "💧" },
+          { id: "shaker-bottle", name: "Shaker Bottle", emoji: "🥤" },
+          { id: "gym-bag", name: "Gym Bag", emoji: "🎒" },
+          { id: "resistance-bands", name: "Resistance Bands", emoji: "🏋️" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "dog-essentials",
+    name: "Dog Essentials",
+    categories: [
+      {
+        id: "dog-food",
+        name: "Food & Treats",
+        color: "#d97706",
+        items: [
+          { id: "dry-dog-food", name: "Dry Dog Food", emoji: "🐕" },
+          { id: "wet-dog-food", name: "Wet Dog Food", emoji: "🫙" },
+          { id: "dog-treats", name: "Dog Treats", emoji: "🦴" },
+          { id: "dental-chews", name: "Dental Chews", emoji: "🦷" },
+          { id: "training-treats", name: "Training Treats", emoji: "⭐" },
+          { id: "puppy-food", name: "Puppy Food", emoji: "🐶" },
+          { id: "dog-milk-bones", name: "Milk Bones", emoji: "🦴" },
+          { id: "frozen-dog-treats", name: "Frozen Dog Treats", emoji: "🧊" },
+        ],
+      },
+      {
+        id: "dog-health",
+        name: "Health & Grooming",
+        color: "#06b6d4",
+        items: [
+          { id: "dog-shampoo", name: "Dog Shampoo", emoji: "🧴" },
+          { id: "flea-treatment", name: "Flea & Tick Treatment", emoji: "🪲" },
+          { id: "dog-vitamins", name: "Dog Vitamins", emoji: "💊" },
+          { id: "dog-toothbrush", name: "Dog Toothbrush", emoji: "🦷" },
+          { id: "dog-toothpaste", name: "Dog Toothpaste", emoji: "🦷" },
+          { id: "nail-clippers-dog", name: "Nail Clippers", emoji: "✂️" },
+          { id: "ear-cleaner", name: "Ear Cleaner", emoji: "🫙" },
+          { id: "dog-brush", name: "Dog Brush", emoji: "🪮" },
+          { id: "heartworm-prevention", name: "Heartworm Prevention", emoji: "💊" },
+        ],
+      },
+      {
+        id: "dog-supplies",
+        name: "Walk & Play",
+        color: "#10b981",
+        items: [
+          { id: "poop-bags", name: "Poop Bags", emoji: "🗑️" },
+          { id: "dog-leash", name: "Leash", emoji: "🐕" },
+          { id: "dog-collar", name: "Collar", emoji: "🏷️" },
+          { id: "dog-toy-ball", name: "Ball", emoji: "🎾" },
+          { id: "dog-toy-chew", name: "Chew Toy", emoji: "🦴" },
+          { id: "dog-toy-rope", name: "Rope Toy", emoji: "🪢" },
+          { id: "dog-bowl", name: "Food Bowl", emoji: "🍽️" },
+          { id: "water-bowl", name: "Water Bowl", emoji: "💧" },
+          { id: "dog-bed", name: "Dog Bed", emoji: "🛏️" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "holiday-baking",
+    name: "Holiday Cookie Baking",
+    categories: [
+      {
+        id: "baking-dry",
+        name: "Dry Ingredients",
+        color: "#d97706",
+        items: [
+          { id: "flour-bk", name: "All-Purpose Flour", emoji: "🌾" },
+          { id: "sugar-bk", name: "White Sugar", emoji: "🍚" },
+          { id: "brown-sugar-bk", name: "Brown Sugar", emoji: "🍯" },
+          { id: "powdered-sugar", name: "Powdered Sugar", emoji: "🍚" },
+          { id: "baking-soda", name: "Baking Soda", emoji: "🫙" },
+          { id: "baking-powder", name: "Baking Powder", emoji: "🫙" },
+          { id: "salt-bk", name: "Salt", emoji: "🧂" },
+          { id: "cocoa-powder", name: "Cocoa Powder", emoji: "🫙" },
+          { id: "cinnamon-bk", name: "Cinnamon", emoji: "🪵" },
+          { id: "nutmeg", name: "Nutmeg", emoji: "🌰" },
+          { id: "ginger-bk", name: "Ground Ginger", emoji: "🌶️" },
+        ],
+      },
+      {
+        id: "baking-wet",
+        name: "Wet Ingredients",
+        color: "#f59e0b",
+        items: [
+          { id: "butter-bk", name: "Unsalted Butter", emoji: "🧈" },
+          { id: "eggs-bk", name: "Eggs", emoji: "🥚" },
+          { id: "vanilla-extract", name: "Vanilla Extract", emoji: "🫙" },
+          { id: "milk-bk", name: "Milk", emoji: "🥛" },
+          { id: "molasses", name: "Molasses", emoji: "🫙" },
+          { id: "maple-syrup", name: "Maple Syrup", emoji: "🍁" },
+        ],
+      },
+      {
+        id: "baking-addins",
+        name: "Mix-Ins",
+        color: "#ec4899",
+        items: [
+          { id: "chocolate-chips", name: "Chocolate Chips", emoji: "🍫" },
+          { id: "sprinkles", name: "Sprinkles", emoji: "🎉" },
+          { id: "nuts-bk", name: "Chopped Nuts", emoji: "🌰" },
+          { id: "dried-cranberries", name: "Dried Cranberries", emoji: "🍒" },
+          { id: "shredded-coconut", name: "Shredded Coconut", emoji: "🥥" },
+          { id: "mini-marshmallows", name: "Mini Marshmallows", emoji: "☁️" },
+          { id: "peppermint-chips", name: "Peppermint Chips", emoji: "🍬" },
+        ],
+      },
+      {
+        id: "baking-decor",
+        name: "Decorating",
+        color: "#8b5cf6",
+        items: [
+          { id: "royal-icing-mix", name: "Royal Icing Mix", emoji: "🎂" },
+          { id: "food-coloring", name: "Food Coloring Set", emoji: "🎨" },
+          { id: "piping-bags", name: "Piping Bags", emoji: "🎂" },
+          { id: "cookie-cutters", name: "Cookie Cutters", emoji: "⭐" },
+          { id: "parchment-paper", name: "Parchment Paper", emoji: "📄" },
+          { id: "cooling-rack", name: "Cooling Rack", emoji: "🍪" },
+          { id: "rolling-pin", name: "Rolling Pin", emoji: "🪵" },
+          { id: "cookie-tins", name: "Cookie Tins (gifting)", emoji: "🎁" },
+        ],
+      },
+    ],
+  },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -766,6 +1279,9 @@ export default function TapTap() {
   const [newItemEmoji, setNewItemEmoji] = useState("")
   const [newItemName, setNewItemName] = useState("")
   const [sharedList, setSharedList] = useState<ShareData | null>(null)
+  const [showAddCategory, setShowAddCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0])
 
   // Hydration guard for theme toggle
   useEffect(() => setMounted(true), [])
@@ -805,6 +1321,11 @@ export default function TapTap() {
     } else if (result.broken) {
       toast.error("This share link appears to be broken.")
       window.history.replaceState(null, "", window.location.pathname)
+    }
+
+    // Register service worker for PWA offline support
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/tap-tap/sw.js").catch(() => { /* ignore in dev */ })
     }
   }, [])
 
@@ -929,6 +1450,30 @@ export default function TapTap() {
     const preset = presets.find((p) => p.id === id)
     setCurrentPreset(preset ?? null)
     setSel({})
+  }
+
+  const restoreDefaults = () => {
+    setPresets(defaultPresets)
+    setCurrentPreset(defaultPresets[0])
+    setSel({})
+    toast.success("Presets restored to defaults.")
+  }
+
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim() || !currentPreset) return
+    const newCat: Category = {
+      id: `cat-${Date.now()}`,
+      name: newCategoryName.trim(),
+      color: newCategoryColor,
+      items: [],
+    }
+    const updated: Preset = { ...currentPreset, categories: [...currentPreset.categories, newCat] }
+    setPresets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+    setCurrentPreset(updated)
+    setNewCategoryName("")
+    setNewCategoryColor(PRESET_COLORS[0])
+    setShowAddCategory(false)
+    toast.success(`"${newCat.name}" added — tap + to add items.`)
   }
 
   const deletePreset = (id: string) => {
@@ -1094,6 +1639,16 @@ export default function TapTap() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                  <div>
+                    <Button
+                      onClick={restoreDefaults}
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-border hover:bg-muted/70 bg-transparent text-muted-foreground"
+                    >
+                      Restore default presets
+                    </Button>
                   </div>
                   <div>
                     <h3 className="font-medium mb-2 font-serif text-sm">Backup</h3>
@@ -1308,6 +1863,51 @@ export default function TapTap() {
                 </CardContent>
               </Card>
             ))}
+
+            {/* Add category button */}
+            <Dialog open={showAddCategory} onOpenChange={setShowAddCategory}>
+              <DialogTrigger asChild>
+                <button className="border-2 border-dashed border-border/40 rounded-xl p-6 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-border/70 transition-colors cursor-pointer">
+                  <Plus className="w-5 h-5" />
+                  <span className="text-sm">Add category</span>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="bg-card/95 backdrop-blur-md border-border">
+                <DialogHeader>
+                  <DialogTitle className="font-serif">New Category</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="e.g. Spices, Frozen Foods…"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+                    className="bg-input border-border focus:ring-2 focus:ring-primary/20"
+                    autoFocus
+                  />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Color</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {PRESET_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setNewCategoryColor(color)}
+                          className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                          style={{
+                            backgroundColor: color,
+                            outline: newCategoryColor === color ? `3px solid ${color}` : "none",
+                            outlineOffset: "2px",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={handleAddCategory} className="w-full bg-primary hover:bg-primary/90">
+                    Add Category
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </main>
