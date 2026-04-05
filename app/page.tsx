@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Plus, Settings, Download, Upload, ChefHat, Share2, RotateCcw, Sun, Moon, X, Copy, Trash2 } from "lucide-react"
+import { Plus, Settings, Download, Upload, ChefHat, Share2, RotateCcw, Sun, Moon, X, Copy, Trash2, Pencil } from "lucide-react"
 import LZString from "lz-string"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -999,6 +999,8 @@ export default function TapTap() {
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0])
+  const [editingCat, setEditingCat] = useState<string | null>(null)
+  const [isShorteningUrl, setIsShorteningUrl] = useState(false)
 
   // Hydration guard for theme toggle
   useEffect(() => setMounted(true), [])
@@ -1060,6 +1062,17 @@ export default function TapTap() {
     }
   }, [currentPreset])
 
+  // ── Keyboard shortcut: Cmd/Ctrl+Enter → Share ──────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        if (totalCount > 0) handleShare()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  })
+
   // ── Item tap handlers ──────────────────────────────────────────────────────
 
   const tap = (catId: string, itemId: string) =>
@@ -1086,6 +1099,18 @@ export default function TapTap() {
     return `${window.location.origin}${window.location.pathname}?list=${hash}`
   }
 
+  /** Shorten a URL via is.gd (free, CORS-enabled, no auth). Falls back to original on failure. */
+  const shortenUrl = async (url: string): Promise<string> => {
+    try {
+      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(url)}`)
+      if (!res.ok) return url
+      const data = await res.json()
+      return data.resulturl ?? url
+    } catch {
+      return url
+    }
+  }
+
   const handleShare = async () => {
     if (!currentPreset) return
     const url = getShareUrl()
@@ -1104,13 +1129,35 @@ export default function TapTap() {
   }
 
   const handleCopyLink = async () => {
-    const url = getShareUrl()
+    setIsShorteningUrl(true)
+    const longUrl = getShareUrl()
+    const url = await shortenUrl(longUrl)
+    setIsShorteningUrl(false)
     try {
       await navigator.clipboard.writeText(url)
-      toast.success("Link copied!")
+      toast.success(url !== longUrl ? `Short link copied: ${url}` : "Link copied!")
     } catch {
       toast.error("Could not copy link.")
     }
+  }
+
+  // ── Delete item from category ──────────────────────────────────────────────
+
+  const handleDeleteItem = (catId: string, itemId: string) => {
+    if (!currentPreset) return
+    const updated: Preset = {
+      ...currentPreset,
+      categories: currentPreset.categories.map((cat) =>
+        cat.id === catId ? { ...cat, items: cat.items.filter((item) => item.id !== itemId) } : cat,
+      ),
+    }
+    setPresets((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+    setCurrentPreset(updated)
+    setSel((prev) => {
+      const next = { ...prev }
+      delete next[k(catId, itemId)]
+      return next
+    })
   }
 
   const saveSharedAsPreset = () => {
@@ -1431,7 +1478,12 @@ export default function TapTap() {
             <SelectContent>
               {presets.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {p.name}
+                  <span className="flex items-center justify-between w-full gap-3">
+                    <span>{p.name}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {p.categories.reduce((s, c) => s + c.items.length, 0)}
+                    </span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1475,7 +1527,14 @@ export default function TapTap() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-serif flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                    {cat.name}
+                    <span className="flex-1">{cat.name}</span>
+                    <button
+                      onClick={() => setEditingCat(editingCat === cat.id ? null : cat.id)}
+                      className={`p-1 rounded transition-colors ${editingCat === cat.id ? "text-destructive" : "text-muted-foreground hover:text-foreground"}`}
+                      title={editingCat === cat.id ? "Done editing" : "Edit items"}
+                    >
+                      {editingCat === cat.id ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                    </button>
                   </CardTitle>
                 </CardHeader>
 
@@ -1496,8 +1555,19 @@ export default function TapTap() {
                                   border: `1px solid ${hexToRgba(cat.color, 0.2)}`,
                                 }
                           }
-                          onClick={() => tap(cat.id, item.id)}
+                          onClick={() => editingCat !== cat.id && tap(cat.id, item.id)}
                         >
+                          {editingCat === cat.id && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteItem(cat.id, item.id)
+                              }}
+                              className="absolute top-1 right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors z-10"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
                           <div className="flex items-start gap-1.5 min-h-0">
                             <span className="text-xl flex-shrink-0">{item.emoji}</span>
                             <span className="text-xs font-medium leading-tight line-clamp-2">{item.name}</span>
@@ -1646,10 +1716,11 @@ export default function TapTap() {
               onClick={handleCopyLink}
               size="sm"
               variant="outline"
+              disabled={isShorteningUrl}
               className="border-border hover:bg-muted/70 bg-transparent gap-2"
             >
               <Copy className="w-4 h-4" />
-              Copy Link
+              {isShorteningUrl ? "…" : "Short Link"}
             </Button>
             <Button
               onClick={handleShare}

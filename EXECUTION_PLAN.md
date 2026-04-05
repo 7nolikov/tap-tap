@@ -70,6 +70,17 @@ _Last updated: 2026-03-31 — full reassessment after viral implementation pass_
 
 ---
 
+## Status: Done ✅ (continued)
+
+- ✅ **URL shortener via is.gd** — "Short Link" button calls `https://is.gd/create.php?format=json&url=…` (free, CORS-enabled, no auth, no backend). Falls back silently to the long URL if the API is unavailable. Toast confirms the short URL was copied.
+- ✅ **VG-9: Item count in preset selector** — Each SelectItem shows the total item count (e.g. `58`) right-aligned in muted text.
+- ✅ **VG-10: Keyboard shortcut** — `Cmd+Enter` / `Ctrl+Enter` triggers Share when items are selected.
+- ✅ **VG-12: Delete items from category** — Pencil icon in each CardHeader toggles edit mode; a red × button appears on each item tile to delete it.
+- ✅ **TD-10: Unused shadcn components removed** — `components/ui/` reduced from 50 files to 6 (button, input, card, dialog, alert, select). 44 unused components deleted.
+- ✅ **TD-11: Next.js upgraded** — From 15.2.4 (CVE-2025-66478) to 16.2.1.
+
+---
+
 ## Open Items
 
 ### VG-8. Pre-loaded demo URLs for launch posts
@@ -151,14 +162,6 @@ Include these links in every launch post.
 
 ---
 
-### TD-11. Upgrade Next.js (security vulnerability)
-
-**Status:** Not done.
-
-**Warning:** `next@15.2.4` has a known CVE (CVE-2025-66478). Upgrade to the patched version.
-
-**Fix:** `pnpm add next@latest`
-
 ---
 
 ## Launch Sequence (unchanged — prerequisites now met)
@@ -211,13 +214,8 @@ Include these links in every launch post.
 | # | Item | Type | Impact | Effort | Status |
 |---|------|------|--------|--------|--------|
 | 1 | Pre-loaded demo URLs for launch | VG-8 | CRITICAL for launch | Trivial | 🔲 |
-| 2 | Item count badge in preset selector | VG-9 | Medium | Trivial | 🔲 |
-| 3 | Delete items from category | VG-12 | Medium | Low | 🔲 |
-| 4 | Share preset template | VG-11 | High | Medium | 🔲 |
-| 5 | Keyboard shortcut (Cmd+Enter) | VG-10 | Low | Trivial | 🔲 |
-| 6 | Clean up unused shadcn components | TD-10 | Low | Low | 🔲 |
-| 7 | Upgrade Next.js (security) | TD-11 | High | Low | 🔲 |
-| 8 | Launch: Show HN | VG-7 | CRITICAL | Medium | 🔲 |
-| 9 | Launch: Reddit r/webdev + r/selfhosted | VG-7 | High | Low | 🔲 |
-| 10 | Launch: Twitter/X thread | VG-7 | High | Low | 🔲 |
-| 11 | Launch: Product Hunt | VG-7 | High | High | 🔲 |
+| 2 | Share preset template | VG-11 | High | Medium | 🔲 |
+| 3 | Launch: Show HN | VG-7 | CRITICAL | Medium | 🔲 |
+| 4 | Launch: Reddit r/webdev + r/selfhosted | VG-7 | High | Low | 🔲 |
+| 5 | Launch: Twitter/X thread | VG-7 | High | Low | 🔲 |
+| 6 | Launch: Product Hunt | VG-7 | High | High | 🔲 |
