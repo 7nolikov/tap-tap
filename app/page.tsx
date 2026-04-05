@@ -198,15 +198,18 @@ function decodePreset(search: string): Preset | null {
 
 /** Shown to first-time visitors to demonstrate the sharing mechanic. */
 const DEMO_LIST: ShareData = {
-  n: "Anna's Weekend Shopping 🛒",
+  n: "Christmas Dinner",
   i: [
-    { c: "Dairy & Eggs", e: "🥛", l: "Milk", q: 2, k: "#3b82f6" },
-    { c: "Dairy & Eggs", e: "🧀", l: "Cheddar Cheese", q: 1, k: "#3b82f6" },
-    { c: "Dairy & Eggs", e: "🥚", l: "Eggs", q: 1, k: "#3b82f6" },
-    { c: "Bakery", e: "🥖", l: "Baguette", q: 2, k: "#f59e0b" },
-    { c: "Meat", e: "🍗", l: "Chicken Thighs", q: 1, k: "#ef4444" },
-    { c: "Produce", e: "🍅", l: "Tomatoes", q: 1, k: "#10b981" },
-    { c: "Produce", e: "🥦", l: "Broccoli", q: 1, k: "#10b981" },
+    { c: "The Main Event", e: "🦃", l: "Whole Turkey", q: 1, k: "#ef4444" },
+    { c: "The Main Event", e: "🥓", l: "Streaky Bacon", q: 2, k: "#ef4444" },
+    { c: "The Main Event", e: "🍗", l: "Pigs in Blankets", q: 1, k: "#ef4444" },
+    { c: "Vegetables", e: "🥕", l: "Carrots", q: 1, k: "#10b981" },
+    { c: "Vegetables", e: "🥦", l: "Brussels Sprouts", q: 1, k: "#10b981" },
+    { c: "Vegetables", e: "🥔", l: "Roasting Potatoes", q: 2, k: "#10b981" },
+    { c: "Stuffing & Gravy", e: "🌿", l: "Sage & Onion Stuffing", q: 1, k: "#f59e0b" },
+    { c: "Stuffing & Gravy", e: "🫙", l: "Gravy Granules", q: 1, k: "#f59e0b" },
+    { c: "Dessert", e: "🎂", l: "Christmas Pudding", q: 1, k: "#8b5cf6" },
+    { c: "Dessert", e: "🍦", l: "Brandy Butter", q: 1, k: "#8b5cf6" },
   ],
 }
 
@@ -1060,11 +1063,6 @@ export default function TapTap() {
     const savedId = localStorage.getItem("tap-tap-share-current-preset")
     setCurrentPreset(loaded.find((p) => p.id === savedId) ?? loaded[0] ?? null)
 
-    if (localStorage.getItem("tap-tap-storage-accepted") !== "true" &&
-        localStorage.getItem("tap-tap-share-cookie-accepted") !== "true") {
-      setShowStorageNotice(true)
-    }
-
     // Decode ?preset= template share
     const incomingPreset = decodePreset(window.location.search)
     if (incomingPreset) {
@@ -1087,6 +1085,10 @@ export default function TapTap() {
       localStorage.setItem("tap-tap-demo-seen", "1")
       setSharedList(DEMO_LIST)
       setIsDemoList(true)
+    } else if (localStorage.getItem("tap-tap-storage-accepted") !== "true" &&
+        localStorage.getItem("tap-tap-share-cookie-accepted") !== "true") {
+      // Only show storage notice when no modal is open (demo or shared list)
+      setShowStorageNotice(true)
     }
 
     if (!localStorage.getItem("tap-tap-welcome-seen")) {
@@ -1419,7 +1421,7 @@ export default function TapTap() {
           <DialogContent className="bg-card/95 backdrop-blur-md border-border max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-serif flex items-center gap-2">
-                🛒 {sharedList.n}
+                {sharedList.n}
                 {isDemoList && (
                   <span className="text-[10px] font-normal bg-primary/15 text-primary px-2 py-0.5 rounded-full">demo</span>
                 )}
@@ -1898,7 +1900,7 @@ export default function TapTap() {
               className="bg-primary hover:bg-primary/90 gap-2 flex-1 max-w-xs"
             >
               <Share2 className="w-4 h-4" />
-              Share ({totalCount} item{totalCount !== 1 ? "s" : ""})
+              Share List
             </Button>
           </div>
         </div>
