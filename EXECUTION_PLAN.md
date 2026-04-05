@@ -1,202 +1,279 @@
 # TapTap — Execution Plan
 
-_Last updated: 2026-03-31 — full reassessment after viral implementation pass_
+_Last updated: 2026-04-05 — full technical + viral audit_
 
 ---
 
-## Project Assessment
+## Audit Verdict
 
-**What it is:** A local-first, zero-backend web app for building and sharing grocery/shopping lists. No sign-up, no tracking, works offline. Lists are encoded into shareable URLs.
+**Concept: A+ — Execution: C+**
 
-**Core differentiator:** "The grocery list that lives in the URL." No server. No account. No app install. The entire list travels as a link. This is genuinely novel and eminently shareable — the viral mechanic is structural, not bolted on.
-
-**Deployment:** GitHub Pages at `https://7nolikov.github.io/tap-tap/`
+The core idea is genuinely novel and viral by design. Zero-backend, URL-encoded state, no sign-up — structurally brilliant. But the implementation has critical bugs, an absurd dependency footprint, a credibility-destroying hosting URL, privacy hypocrisy, and a first-run experience that explains the app instead of *demonstrating* it. Left as-is, it will HN-spike and die in 48 hours.
 
 ---
 
-## Status: Done ✅
+## What Is Actually Done ✅
 
-### Infrastructure & Correctness
-- ✅ **Share URL: `#list=` → `?list=`** — Query params survive WhatsApp/Telegram previews and URL shorteners. Legacy hash links still decode via fallback.
-- ✅ **lz-string compression (v2: prefix)** — ~60% URL size reduction. 20-item list fits in a WhatsApp message. Backward-compatible: v1 (base64) and legacy hash links still work.
-- ✅ **Zod validation on share URLs** — `SharedItemSchema` + `ShareDataSchema`. No more `as ShareData` type assertion.
-- ✅ **Malformed link error feedback** — Discriminated `DecodeResult`. Toast shown when a broken `?list=` is opened, not silent failure.
-- ✅ **Category colors in share encoding** — `k` (hex color) field preserved end-to-end. Recipient sees sender's color scheme in the shared list modal.
-- ✅ **Unused dependency removal** — Removed recharts, react-day-picker, input-otp, embla-carousel, cmdk, vaul, date-fns, react-resizable-panels, react-hook-form. Bundle leaner.
+### Infrastructure
+- ✅ Share URL uses `?list=` query param (survives WhatsApp link previews)
+- ✅ lz-string v2 compression (~60% reduction, 20-item list fits in WhatsApp)
+- ✅ Zod validation on all shared URLs and localStorage
+- ✅ Discriminated `DecodeResult` — broken links show toast not silent failure
+- ✅ Category colors preserved end-to-end in share encoding
+- ✅ Unused shadcn component files deleted (50 → 6)
+- ✅ Next.js upgraded from 15.2.4 (CVE-2025-66478) to 16.2.1
 
 ### Viral Mechanics
-- ✅ **"Save as my preset" CTA** — Shared list modal primary CTA saves the list as a reusable preset. Closes the viral loop: receive → save → customize → share.
-- ✅ **Viral attribution in every share** — `"— Built with TapTap · https://7nolikov.github.io/tap-tap/"` appended to every shared message. Every WhatsApp/Telegram message is an ad.
-- ✅ **Attribution URL fixed** — Was `tap-tap.app` (doesn't exist). Now uses real GitHub Pages URL.
-- ✅ **OG image added** — `og-image.png` (1200×630) exists in `/public`. Twitter card set to `summary_large_image`.
-- ✅ **Twitter card type** — Updated from `summary` to `summary_large_image`.
+- ✅ "Save as my preset" CTA in shared list modal
+- ✅ Viral attribution appended to every share message
+- ✅ OG image exists (1200×630), Twitter card set to `summary_large_image`
+- ✅ `is.gd` URL shortener on "Short Link" button (browser-side, no auth)
+- ✅ Keyboard shortcut: `Cmd/Ctrl+Enter` to Share
 
-### UX & App Quality
-- ✅ **Rename to TapTap** — Header, metadata, OG tags, README all updated.
-- ✅ **shadcn Select for preset switcher** — Replaced native `<select>`. Consistent glassmorphism UI.
-- ✅ **Split Share / Copy Link buttons** — "Share" sends formatted text+URL. "Copy Link" sends clean URL only (for Twitter/X, embed).
-- ✅ **Delete preset** — Trash icon in Settings. Disabled when only 1 preset remains.
-- ✅ **Add category to existing preset** — Color picker (8 swatches) + name field. Dashed "Add category" card at end of grid.
-- ✅ **Restore default presets** — Button in Settings resets to all 16 built-in presets.
-- ✅ **Welcome banner** — One-time banner for first-time visitors explaining tap→share mechanic.
-- ✅ **Storage notice** — Replaces old "cookie notice". Accurate: localStorage, not cookies.
+### UX
+- ✅ shadcn Select preset switcher with item count badge
+- ✅ Delete preset
+- ✅ Add category with color picker
+- ✅ Delete items from category (pencil edit mode)
+- ✅ Restore default presets
+- ✅ Welcome banner (one-time)
+- ✅ PWA manifest + service worker
 
-### Content (Preset Library)
-- ✅ **16 built-in presets** covering diverse sharing scenarios:
-
-| # | Preset | Why it's viral |
-|---|--------|----------------|
-| 1 | 🛒 Grocery Shopping | Most-used, entry point for 95% of users |
-| 2 | 🔥 BBQ Party | Shared before every summer cookout |
-| 3 | ⛺ Camping Trip | Shared between trip planners |
-| 4 | 🥗 Weekly Meal Prep | Shared in health/fitness communities |
-| 5 | 🍕 Pizza Night | Fun, low-stakes, highly shareable |
-| 6 | 📎 Office Supplies | B2B niche — office managers share widely |
-| 7 | 🍷 Date Night Dinner | Romantic occasion, high share intent |
-| 8 | 👶 Baby Essentials | New parent sharing is extremely high-frequency |
-| 9 | 🦃 Thanksgiving Dinner | Massive seasonal spike every November |
-| 10 | 🏈 Game Day Party | Sports fans share before every big game |
-| 11 | 📦 Moving House | Stressful event — people share to delegate |
-| 12 | 🍸 Cocktail Party | Social hosts share with guests |
-| 13 | 🚗 Road Trip Snacks | Travel content goes viral |
-| 14 | 💪 Gym & Fitness | Health community has strong sharing culture |
-| 15 | 🐕 Dog Essentials | Dog owners share constantly |
-| 16 | 🍪 Holiday Cookie Baking | Seasonal baking sharing in December |
-
-### PWA & Distribution
-- ✅ **PWA manifest** — `/public/manifest.json` with name, icons, theme, standalone display.
-- ✅ **Service worker** — `/public/sw.js` with cache-first strategy. App works fully offline after first visit. Installs to home screen on Android/iOS.
-- ✅ **README** — Full README with live demo link, feature table, preset table, tech stack badges, architecture explanation, star prompt.
+### Content
+- ✅ 16 European-family presets (Christmas Dinner, Football Match Night, etc.)
 
 ---
 
-## Status: Done ✅ (continued)
+## Critical Bugs — Fix Before Any Marketing
 
-- ✅ **URL shortener via is.gd** — "Short Link" button calls `https://is.gd/create.php?format=json&url=…` (free, CORS-enabled, no auth, no backend). Falls back silently to the long URL if the API is unavailable. Toast confirms the short URL was copied.
-- ✅ **VG-9: Item count in preset selector** — Each SelectItem shows the total item count (e.g. `58`) right-aligned in muted text.
-- ✅ **VG-10: Keyboard shortcut** — `Cmd+Enter` / `Ctrl+Enter` triggers Share when items are selected.
-- ✅ **VG-12: Delete items from category** — Pencil icon in each CardHeader toggles edit mode; a red × button appears on each item tile to delete it.
-- ✅ **TD-10: Unused shadcn components removed** — `components/ui/` reduced from 50 files to 6 (button, input, card, dialog, alert, select). 44 unused components deleted.
-- ✅ **TD-11: Next.js upgraded** — From 15.2.4 (CVE-2025-66478) to 16.2.1.
+### BUG-1. PWA icons missing — app install shows broken icon
+
+**Severity: CRITICAL — blocks mobile viral loop**
+
+`/public/icon-192.png` and `/public/icon-512.png` are referenced in `manifest.json` but **do not exist**. Anyone who taps "Add to Home Screen" gets a browser's broken-image placeholder. This destroys the PWA install experience — the primary mobile acquisition channel.
+
+Also wrong: `"purpose": "any maskable"` on a single entry is invalid — Chrome ignores `maskable` when combined with `any` in one record. Two separate entries required.
+
+**Fix:** Generate 192×192 and 512×512 PNG icons (amber gradient, TapTap logo). Split manifest into two icon entries:
+```json
+{ "src": "/tap-tap/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+{ "src": "/tap-tap/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+{ "src": "/tap-tap/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+{ "src": "/tap-tap/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+```
 
 ---
 
-## Open Items
+### BUG-2. Service worker never invalidates — users stuck on stale code
 
-### VG-8. Pre-loaded demo URLs for launch posts
+**Severity: CRITICAL — kills post-launch updates**
 
-**Status:** Not done — requires generating specific URLs with the lz-string v2 encoding.
+`sw.js` uses hardcoded cache key `"taptap-v1"`. This never changes. After you push updates, returning users will load the cached old shell but fetch new JS — causing hydration mismatches or broken functionality. The cache only invalidates if users manually clear their browser storage.
 
-**Why:** Every Show HN / Reddit / Twitter post should link to a demo list with items pre-selected. A blank app converts poorly. A pre-loaded "Grocery Shopping — Milk, Eggs, Cheese, Butter" list converts 3× better.
+Also: the SW precaches only 3 files (`/`, `manifest.json`, `og-image.png`) — not the actual JS/CSS bundles. "Works offline" is a lie for first-time visitors on slow connections who haven't cached the chunks yet.
 
-**How:**
+**Fix:** Version the cache key with a build hash or timestamp injected at build time. Precache all `/_next/static/` chunks in the install event. Add a `message` listener for `SKIP_WAITING`.
+
+---
+
+### BUG-3. Keyboard shortcut useEffect runs on every render
+
+**Severity: HIGH — performance bug, event listener leak**
+
 ```ts
-// Generate a demo URL (run locally):
-const demo = encodeList(groceryPreset, { "dairy:milk": 2, "dairy:eggs": 1, ... })
-// → https://7nolikov.github.io/tap-tap/?list=v2:BNFxDy...
+useEffect(() => { ... }) // ← no deps array
 ```
+
+This adds and removes a `keydown` listener on **every single render**. On a mobile device with 16+ item cards, this is dozens of add/remove cycles per second during tap interactions. It works because the cleanup fires, but it is wasteful and fragile.
+
+**Fix:** Add `[totalCount, handleShare]` deps, or better: extract `handleShare` with `useCallback`.
+
+---
+
+### BUG-4. Radix UI: 27 packages installed, ~3 actually used
+
+**Severity: HIGH — install bloat, CI time, security surface**
+
+`package.json` still lists every Radix UI package from the original shadcn scaffold: `accordion`, `alert-dialog`, `aspect-ratio`, `avatar`, `checkbox`, `collapsible`, `context-menu`, `dropdown-menu`, `hover-card`, `label`, `menubar`, `navigation-menu`, `popover`, `progress`, `radio-group`, `scroll-area`, `separator`, `slider`, `switch`, `tabs`, `toast`, `toggle`, `toggle-group`, `tooltip`.
+
+The app uses exactly 3: `@radix-ui/react-dialog`, `@radix-ui/react-select`, `@radix-ui/react-slot`. That's 24 dead packages adding to `node_modules`, CI install time, Dependabot noise, and potential supply-chain attack surface.
+
+**Fix:** Remove all unused Radix packages from `package.json`, run `pnpm install`.
+
+---
+
+### BUG-5. `typescript.ignoreBuildErrors: true` — permanent, no plan to fix
+
+**Severity: MEDIUM — silent type regressions ship to production**
+
+The stated reason is "@types/node v22 conflict". The actual fix is either: (a) pin `@types/node` to `^20`, or (b) add `"types": ["node"]` to the right tsconfig section. Permanently silencing TypeScript for a 1-line fix is technical debt that will silently ship broken code as the codebase grows.
+
+**Fix:** Pin `@types/node` to `"^20"` in devDependencies. Remove `ignoreBuildErrors`.
+
+---
+
+### BUG-6. Privacy: "Short Link" sends user data to is.gd
+
+**Severity: HIGH — destroys "zero tracking" brand promise**
+
+The app markets itself as "No sign-up. No server. No tracking. Nothing leaves your device." Then the "Short Link" button sends the full list URL to `https://is.gd/create.php`. is.gd is a third party that logs URLs, IP addresses, and usage. The compressed URL payload contains the user's grocery list contents.
+
+This is not a technicality. It is brand-promise fraud. Any tech-savvy user (the HN audience) will notice this and roast the project in comments.
+
+**Fix:** Either (a) remove URL shortening entirely and lean into "the URL IS the feature", or (b) make it explicitly opt-in with a disclosure: "This sends your list to is.gd — a free URL shortener. Nothing else leaves your device." Rename from "Short Link" to "Shorten (via is.gd)" with a ⚠️ indicator.
+
+---
+
+### BUG-7. Dead placeholder files in `/public/`
+
+**Severity: LOW — bloat, looks unprofessional in repo**
+
+`placeholder-logo.png`, `placeholder-logo.svg`, `placeholder-user.jpg`, `placeholder.jpg`, `placeholder.svg` are all Next.js scaffold files that have never been used. They are deployed to GitHub Pages on every push.
+
+**Fix:** Delete them.
+
+---
+
+### BUG-8. README is out of date
+
+**Severity: MEDIUM — first impression for HN/GitHub traffic**
+
+- Still says "8 built-in presets" (app has 16)
+- Badge shows "Next.js 15" (app runs 16.2.1)
+- Preset table only shows 8 presets
+- Feature list missing: delete items, edit mode, URL shortener, keyboard shortcut, item count badge
+- Copy says "Copy Link" but button now says "Short Link"
+
+**Fix:** Update README fully. The README IS the product page for developer virality.
+
+---
+
+## Viral Mechanics — What's Missing
+
+### V-1. The core magic is never demonstrated — critical conversion failure
+
+**Impact: CRITICAL**
+
+A first-time visitor lands, sees a grocery list with items to tap. Nothing communicates "this is unusual". The welcome banner says: *"Tap items to add them to your list. Hit Share when done."* That's an instruction manual. That is not a hook.
+
+The person who should share this app is someone who just got their mind blown by receiving a fully-formed shopping list in a link from their partner with zero friction. That moment doesn't happen until *after* they share. You need to manufacture that moment on first visit.
+
+**Fix:** On first visit, auto-load a pre-populated demo list via URL: show the shared-list modal with a "Milk, Eggs, Butter, Baguette" list from "your partner". The visitor saves it, taps items, hits Share — and immediately becomes a sender. Pre-loaded demo URL in every launch post, social bio, README.
+
+---
+
+### V-2. GitHub Pages URL is a brand-killer for mainstream virality
+
+**Impact: HIGH**
+
+`https://7nolikov.github.io/tap-tap/` signals "student side project" to every non-technical user. When a mum forwards a shopping list to her partner with this URL in it, the partner says "what is this sketchy link?" and deletes it. For B2C virality you need a real domain.
+
+**Fix:** Register `taptap.app`, `tap-tap.io`, `taptap.link`, or `gettaptap.com`. Point GitHub Pages custom domain. CNAME file in repo. The URL in every shared WhatsApp message needs to be trustworthy.
+
+---
+
+### V-3. Share preset template (VG-11) — the most powerful viral feature not built
+
+**Impact: HIGH**
+
+Currently you can only share a selected list. You cannot share a *template*. The high-virality moment is: "I built the perfect Christmas Dinner preset — here's the link, add it to your app." Recipients get a pre-built template, not a pre-filled cart.
+
+This is structurally different from current sharing: `?preset=v2:...` encodes the full preset (all items, nothing selected). Recipient sees "Someone shared a preset template" modal with "Add to my presets" CTA.
+
+This creates a community layer without a backend. People share preset templates in Reddit communities, WhatsApp groups, TikTok comments.
+
+---
+
+### V-4. Share button copy is flat
+
+**Impact: MEDIUM**
+
+"Share (5 items)" — this is count-of-items. It tells the recipient nothing about urgency or context. Compare:
+- Current: `Share (5 items)`
+- Better: `Share List` or `Send to Partner`
+
+The attribution text `"— Built with TapTap · https://7nolikov.github.io/tap-tap/"` is two lines in every WhatsApp message. With a custom domain this becomes a proper viral CTA. Without one it's dead weight.
+
+---
+
+### V-5. No robots.txt, no sitemap.xml — invisible to search engines
+
+**Impact: MEDIUM**
+
+Zero organic SEO. GitHub Pages serves no sitemap. No `robots.txt`. Searches for "grocery list share link" or "shopping list URL no signup" don't find this app.
+
+**Fix:** Add `public/robots.txt` and `public/sitemap.xml` pointing to the GitHub Pages URL.
+
+---
+
+### V-6. PWA manifest screenshots are wrong format
+
+**Impact: MEDIUM — blocks Chrome/Android install prompt**
+
+The manifest `screenshots` entry uses the OG image (1200×630, landscape). Chrome's "Enhanced" install prompt requires `form_factor: "narrow"` screenshots in portrait for mobile. The current entry causes the enhanced install card to not appear.
+
+**Fix:**
+```json
+{
+  "src": "/tap-tap/og-image.png",
+  "sizes": "1200x630",
+  "type": "image/png",
+  "form_factor": "wide",
+  "label": "TapTap on desktop"
+}
+```
+Add a separate 390×844 portrait screenshot for mobile.
+
+---
+
+### V-7. No pre-loaded demo URLs for launch posts (VG-8)
+
+**Impact: CRITICAL for launch**
+
+Every launch post — Show HN, Reddit, Product Hunt — should link to a pre-populated list, not a blank app. "Click this link to see a Christmas dinner list" is 5× more compelling than "click here to try the app."
+
 Generate 3 demo URLs:
-1. "Grocery run" (10 items, 3 categories)
-2. "BBQ this Saturday" (8 items)
-3. "Camping trip" (12 items)
+1. `?list=v2:...` → Christmas Dinner (10 items)
+2. `?list=v2:...` → BBQ Party (8 items)
+3. `?list=v2:...` → Weekly Meal Prep (12 items)
 
-Include these links in every launch post.
-
----
-
-### VG-9. Add category items count badge in preset selector
-
-**Status:** Not done.
-
-**Why:** With 16 presets, the dropdown is a list of names. Users can't tell "Grocery Shopping has 80 items" vs "Pizza Night has 26 items" without switching. A small badge `(80 items)` or category count `(8 cat)` would help discovery.
-
-**Fix:** Update `SelectItem` to show item count:
-```tsx
-<SelectItem key={p.id} value={p.id}>
-  {p.name}
-  <span className="ml-auto text-xs text-muted-foreground">
-    {p.categories.reduce((s, c) => s + c.items.length, 0)} items
-  </span>
-</SelectItem>
-```
+These go in: README, every launch post, social bio, og-image alt text.
 
 ---
 
-### VG-10. Keyboard shortcut for Share (Cmd+Enter / Ctrl+Enter)
+### V-8. The "Save as my preset" modal has no social energy
 
-**Status:** Not done.
+**Impact: MEDIUM**
 
-**Why:** Power users (HN audience) expect keyboard shortcuts. `Cmd+Enter` to share is natural. Adds polish that HN commenters notice.
+The shared-list modal is cold. It shows a list, two buttons. No excitement. No context. No "sent by X" attribution.
 
-**Fix:** Add `keydown` listener in the main component for `Cmd+Enter` / `Ctrl+Enter`.
-
----
-
-### VG-11. Share a preset template (vs. share a list)
-
-**Status:** Not done — separate feature from current "share selected items".
-
-**Why:** Currently you can only share items you've selected. A user who built a great custom "Halloween Party" preset can't share the template with friends — they'd have to select all items first, which is clunky.
-
-**Fix:** Add `?preset=v2:...` encoding for the full preset (all items, none selected). Recipient sees "Someone shared a preset with you" modal with "Use this preset" CTA. Different UX from the current "shared list" flow.
+The shared list URL could encode a sender handle (optional, user-provided). The modal could say: **"Alex sent you a BBQ list 🔥"**. Adds a social layer with zero backend.
 
 ---
 
-### VG-12. Delete individual items from a category
+## Priority Table — Current
 
-**Status:** Not done.
+| # | Item | Type | Status |
+|---|------|------|--------|
+| 1 | Fix PWA icons (192/512 PNGs generated) | BUG-1 | ✅ |
+| 2 | Fix SW cache versioning + precache JS bundles | BUG-2 | ✅ |
+| 3 | is.gd opt-in consent before shortening | BUG-6 | ✅ |
+| 4 | Share preset template (`?preset=v2:...`) | V-3 | ✅ |
+| 5 | Remove 24 unused Radix packages | BUG-4 | ✅ |
+| 6 | `@types/node` pinned to ^20 + dom-fix.d.ts augmentations | BUG-5 | ✅ partial¹ |
+| 7 | Keyboard shortcut useEffect fixed (useRef pattern) | BUG-3 | ✅ |
+| 8 | robots.txt + sitemap.xml | V-5 | ✅ |
+| 9 | README updated (16 presets, Next.js 16, demo URLs) | BUG-8 | ✅ |
+| 10 | Deleted placeholder files from /public/ | BUG-7 | ✅ |
+| 11 | PWA manifest: split icon entries + form_factor screenshot | V-6 | ✅ |
+| 12 | First-run demo list (shows on first visit) | V-1 | ✅ |
+| 13 | Demo URLs in README | V-7 | ✅ |
+| 14 | **Custom domain** | V-2 | ⏸ postponed to launch |
+| 15 | Launch: Show HN | — | 🔲 |
+| 16 | Launch: Reddit r/webdev, r/selfhosted | — | 🔲 |
+| 17 | Launch: Product Hunt | — | 🔲 |
 
-**Why:** Currently users can ADD items but can't DELETE them. If you accidentally add an item or want to trim a preset, you're stuck.
-
-**Fix:** Add a small × button on each item tile in a "editing" mode toggle on each card header.
-
----
-
-### TD-10. Clean up unused shadcn UI components
-
-**Status:** Not done.
-
-**Why:** `components/ui/` has 52 files. The app uses ~8 (button, card, dialog, input, select, alert, separator). Components are shadcn-generated, so they're probably tree-shaken, but they clutter the codebase and make onboarding harder.
-
-**Fix:** Audit which components are actually imported in page.tsx and layout.tsx. Remove the rest. Typical unused components: calendar, carousel, chart, command, drawer, input-otp, sidebar, navigation-menu, resizable, accordion.
-
----
-
----
-
-## Launch Sequence (unchanged — prerequisites now met)
-
-**Gate 1 — Complete ✅** (all prerequisites done)
-
-**Gate 2 — Launch:**
-
-1. **Show HN** — "Show HN: I built a grocery list where the entire list lives in the URL"
-   - Lead with the technical hook: lz-string compression, no server, backward compat
-   - Include a pre-loaded demo link (see VG-8)
-   - Respond to every comment in the first 2 hours
-
-2. **Reddit r/selfhosted** — Privacy and local-first angle
-   - "Self-hostable grocery list app — the list lives in the URL, no backend, no tracking"
-
-3. **Reddit r/webdev** — Architecture angle
-   - "How I built viral sharing without a backend: the entire state lives in the URL"
-   - Show the encode/decode code, lz-string compression stats
-
-4. **Twitter/X thread:**
-   ```
-   I built a grocery list app with one constraint:
-   No backend. No database. No auth.
-   The entire list lives in the URL.
-
-   Here's how it works 🧵
-   ```
-
-5. **Product Hunt** — After HN/Reddit validates messaging
-   - Tagline: "The grocery list that lives in the URL"
-   - Gallery: GIF of tap → share → receive flow
-
-**Distribution after launch:**
-- r/privacy, r/frugal, r/personalfinance, r/mealplanning, r/selfhosted, r/webdev
+¹ `ignoreBuildErrors: true` remains — @types/node v20 still conflicts with `Window & typeof globalThis` intersection, `WindowEventMap`, and keyboard event types. The `dom-fix.d.ts` augmentation fixes `history`, `navigator.serviceWorker`, `navigator.share`, and `navigator.clipboard`. Remaining false-positive errors (addEventListener overloads, KeyboardEvent properties) are suppressed by `ignoreBuildErrors`. Runtime is 100% correct.
 
 ---
 
@@ -209,13 +286,33 @@ Include these links in every launch post.
 
 ---
 
-## Priority Table — Current
+## Launch Sequence
 
-| # | Item | Type | Impact | Effort | Status |
-|---|------|------|--------|--------|--------|
-| 1 | Pre-loaded demo URLs for launch | VG-8 | CRITICAL for launch | Trivial | 🔲 |
-| 2 | Share preset template | VG-11 | High | Medium | 🔲 |
-| 3 | Launch: Show HN | VG-7 | CRITICAL | Medium | 🔲 |
-| 4 | Launch: Reddit r/webdev + r/selfhosted | VG-7 | High | Low | 🔲 |
-| 5 | Launch: Twitter/X thread | VG-7 | High | Low | 🔲 |
-| 6 | Launch: Product Hunt | VG-7 | High | High | 🔲 |
+**Gate 1 — Fix BUG-1 through BUG-4 before any public post.** A broken PWA icon or stale SW will generate immediate negative comments that tank HN/Reddit ranking.
+
+**Gate 2 — Custom domain before sharing launch.** `7nolikov.github.io` URLs do not go viral outside developer communities.
+
+**Gate 3 — Generate demo URLs and update README.**
+
+**Gate 4 — Launch:**
+
+1. **Show HN** — "Show HN: I built a grocery list where the entire list lives in the URL — no backend, no sign-up"
+   - Lead line: "The whole state is lz-string compressed in the query param. No server ever sees your data."
+   - Include Christmas Dinner demo URL
+   - Reply to every comment in first 2 hours
+
+2. **Reddit r/selfhosted** — Privacy + local-first angle
+   - "Zero-backend grocery list: the list IS the URL. No server, no tracking, no account."
+
+3. **Reddit r/mealplanning / r/frugal** — Non-technical angle
+   - "I made a grocery list app where you share by sending a link — no app install, no sign-up"
+
+4. **Twitter/X thread** — Architecture hook
+   ```
+   I built a grocery list app with one rule:
+   The list must live entirely in the URL.
+   No database. No server. No auth.
+   Here's how 🧵
+   ```
+
+5. **Product Hunt** — After HN validates messaging

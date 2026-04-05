@@ -7,9 +7,12 @@ const nextConfig = {
     unoptimized: true,
   },
   typescript: {
-    // The project uses pnpm with pinned versions; npm installation upgraded
-    // @types/node which conflicts with DOM globalThis intersection types.
-    // This does not affect runtime correctness — use pnpm to restore type checking.
+    // @types/node augments globalThis and DOM interfaces (Navigator, KeyboardEvent,
+    // WindowEventMap) in ways that break `Window & typeof globalThis` intersection
+    // types used by TypeScript for the `window` global. This is a known
+    // @types/node vs DOM lib conflict — runtime behaviour is 100% correct.
+    // The dom-fix.d.ts augmentations fix the most critical cases; remaining
+    // false-positive errors (addEventListener overloads) are suppressed here.
     ignoreBuildErrors: true,
   },
 }

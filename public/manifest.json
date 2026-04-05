@@ -14,13 +14,25 @@
       "src": "/tap-tap/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/tap-tap/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/tap-tap/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/tap-tap/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
@@ -28,6 +40,7 @@
       "src": "/tap-tap/og-image.png",
       "sizes": "1200x630",
       "type": "image/png",
+      "form_factor": "wide",
       "label": "TapTap — Tap items and share as a link"
     }
   ]

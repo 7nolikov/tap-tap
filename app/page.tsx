@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Plus, Settings, Download, Upload, ChefHat, Share2, RotateCcw, Sun, Moon, X, Copy, Trash2, Pencil } from "lucide-react"
 import LZString from "lz-string"
 import { Button } from "@/components/ui/button"
@@ -172,6 +172,42 @@ function sharedToPreset(data: ShareData): Preset {
       })),
     })),
   }
+}
+
+// ─── Preset template share utilities ─────────────────────────────────────────
+
+function encodePreset(preset: Preset): string {
+  const json = JSON.stringify({ id: preset.id, name: preset.name, categories: preset.categories })
+  return "preset:v1:" + LZString.compressToEncodedURIComponent(json)
+}
+
+function decodePreset(search: string): Preset | null {
+  const raw = new URLSearchParams(search).get("preset")
+  if (!raw || !raw.startsWith("preset:v1:")) return null
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(raw.slice(10))
+    if (!json) return null
+    const parsed = PresetSchema.safeParse(JSON.parse(json))
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  }
+}
+
+// ─── First-run demo list ───────────────────────────────────────────────────────
+
+/** Shown to first-time visitors to demonstrate the sharing mechanic. */
+const DEMO_LIST: ShareData = {
+  n: "Anna's Weekend Shopping 🛒",
+  i: [
+    { c: "Dairy & Eggs", e: "🥛", l: "Milk", q: 2, k: "#3b82f6" },
+    { c: "Dairy & Eggs", e: "🧀", l: "Cheddar Cheese", q: 1, k: "#3b82f6" },
+    { c: "Dairy & Eggs", e: "🥚", l: "Eggs", q: 1, k: "#3b82f6" },
+    { c: "Bakery", e: "🥖", l: "Baguette", q: 2, k: "#f59e0b" },
+    { c: "Meat", e: "🍗", l: "Chicken Thighs", q: 1, k: "#ef4444" },
+    { c: "Produce", e: "🍅", l: "Tomatoes", q: 1, k: "#10b981" },
+    { c: "Produce", e: "🥦", l: "Broccoli", q: 1, k: "#10b981" },
+  ],
 }
 
 // ─── Default presets ──────────────────────────────────────────────────────────
@@ -1001,6 +1037,8 @@ export default function TapTap() {
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0])
   const [editingCat, setEditingCat] = useState<string | null>(null)
   const [isShorteningUrl, setIsShorteningUrl] = useState(false)
+  const [sharedPreset, setSharedPreset] = useState<Preset | null>(null)
+  const [isDemoList, setIsDemoList] = useState(false)
 
   // Hydration guard for theme toggle
   useEffect(() => setMounted(true), [])
@@ -1027,19 +1065,33 @@ export default function TapTap() {
       setShowStorageNotice(true)
     }
 
-    if (!localStorage.getItem("tap-tap-welcome-seen")) {
-      setShowWelcome(true)
-      localStorage.setItem("tap-tap-welcome-seen", "true")
+    // Decode ?preset= template share
+    const incomingPreset = decodePreset(window.location.search)
+    if (incomingPreset) {
+      setSharedPreset(incomingPreset)
+      window.history.replaceState(null, "", window.location.pathname)
+      return
     }
 
-    // Decode shared list from URL (?list=... or legacy #list=...)
+    // Decode ?list= shared list (or legacy #list=)
     const result = decodeList(window.location.search, window.location.hash)
     if (result.ok) {
       setSharedList(result.data)
+      setIsDemoList(false)
       window.history.replaceState(null, "", window.location.pathname)
     } else if (result.broken) {
       toast.error("This share link appears to be broken.")
       window.history.replaceState(null, "", window.location.pathname)
+    } else if (!localStorage.getItem("tap-tap-demo-seen")) {
+      // First-time visitor: show demo list so they experience the sharing mechanic immediately
+      localStorage.setItem("tap-tap-demo-seen", "1")
+      setSharedList(DEMO_LIST)
+      setIsDemoList(true)
+    }
+
+    if (!localStorage.getItem("tap-tap-welcome-seen")) {
+      setShowWelcome(true)
+      localStorage.setItem("tap-tap-welcome-seen", "true")
     }
 
     // Register service worker for PWA offline support
@@ -1062,17 +1114,6 @@ export default function TapTap() {
     }
   }, [currentPreset])
 
-  // ── Keyboard shortcut: Cmd/Ctrl+Enter → Share ──────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        if (totalCount > 0) handleShare()
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  })
-
   // ── Item tap handlers ──────────────────────────────────────────────────────
 
   const tap = (catId: string, itemId: string) =>
@@ -1093,25 +1134,25 @@ export default function TapTap() {
 
   // ── Share ──────────────────────────────────────────────────────────────────
 
-  const getShareUrl = () => {
+  const getShareUrl = useCallback(() => {
     if (!currentPreset) return ""
     const hash = encodeList(currentPreset, sel)
     return `${window.location.origin}${window.location.pathname}?list=${hash}`
-  }
+  }, [currentPreset, sel])
 
-  /** Shorten a URL via is.gd (free, CORS-enabled, no auth). Falls back to original on failure. */
+  /** Shorten via is.gd (free, CORS-enabled, no auth). Falls back silently on failure. */
   const shortenUrl = async (url: string): Promise<string> => {
     try {
       const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(url)}`)
       if (!res.ok) return url
       const data = await res.json()
-      return data.resulturl ?? url
+      return (data.resulturl as string | undefined) ?? url
     } catch {
       return url
     }
   }
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!currentPreset) return
     const url = getShareUrl()
     const text = buildShareText(currentPreset, sel, url)
@@ -1126,19 +1167,96 @@ export default function TapTap() {
       await navigator.clipboard.writeText(text)
       toast.success("List copied to clipboard!")
     }
-  }
+  }, [currentPreset, sel, getShareUrl])
+
+  // ── Keyboard shortcut: Cmd/Ctrl+Enter → Share (registered once via refs) ──
+  const handleShareRef = useRef<typeof handleShare | null>(null)
+  handleShareRef.current = handleShare
+  const totalCountRef = useRef(0)
+  totalCountRef.current = totalCount
+
+  useEffect(() => {
+    const onKey = (e: Event) => {
+      const ke = e as unknown as { metaKey: boolean; ctrlKey: boolean; key: string }
+      if ((ke.metaKey || ke.ctrlKey) && ke.key === "Enter" && totalCountRef.current > 0) {
+        handleShareRef.current?.()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   const handleCopyLink = async () => {
-    setIsShorteningUrl(true)
     const longUrl = getShareUrl()
+    const consented = localStorage.getItem("taptap-isgd-ok")
+    if (!consented) {
+      toast("Short Link uses is.gd (third-party URL shortener)", {
+        description: "Only the URL is sent — your list data stays in the URL itself.",
+        action: {
+          label: "Shorten",
+          onClick: async () => {
+            localStorage.setItem("taptap-isgd-ok", "1")
+            setIsShorteningUrl(true)
+            const url = await shortenUrl(longUrl)
+            setIsShorteningUrl(false)
+            await navigator.clipboard.writeText(url).catch(() => {})
+            toast.success(url !== longUrl ? `Copied: ${url}` : "Link copied!")
+          },
+        },
+        cancel: { label: "Copy full URL", onClick: async () => {
+          await navigator.clipboard.writeText(longUrl).catch(() => {})
+          toast.success("Link copied!")
+        }},
+      })
+      return
+    }
+    setIsShorteningUrl(true)
     const url = await shortenUrl(longUrl)
     setIsShorteningUrl(false)
+    await navigator.clipboard.writeText(url).catch(() => toast.error("Could not copy link."))
+    toast.success(url !== longUrl ? `Copied: ${url}` : "Link copied!")
+  }
+
+  // ── Share preset template ──────────────────────────────────────────────────
+
+  const handleSharePresetTemplate = async () => {
+    if (!currentPreset) return
+    const encoded = encodePreset(currentPreset)
+    const url = `${window.location.origin}${window.location.pathname}?preset=${encoded}`
     try {
-      await navigator.clipboard.writeText(url)
-      toast.success(url !== longUrl ? `Short link copied: ${url}` : "Link copied!")
+      if (navigator.share) {
+        await navigator.share({
+          title: `${currentPreset.name} — TapTap preset`,
+          text: `I'm using this "${currentPreset.name}" shopping list template on TapTap. Tap to add it to your app — no sign-up needed.\n\n${url}`,
+          url,
+        })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast.success("Template link copied!")
+      }
     } catch {
-      toast.error("Could not copy link.")
+      await navigator.clipboard.writeText(url).catch(() => {})
+      toast.success("Template link copied!")
     }
+  }
+
+  const saveSharedPreset = () => {
+    if (!sharedPreset) return
+    const ts = Date.now()
+    const adoptedPreset: Preset = {
+      ...sharedPreset,
+      id: `preset-${ts}`,
+      categories: sharedPreset.categories.map((cat, ci) => ({
+        ...cat,
+        id: `cat-${ts}-${ci}`,
+        items: cat.items.map((item, ii) => ({ ...item, id: `item-${ts}-${ci}-${ii}` })),
+      })),
+    }
+    setPresets((prev) => [...prev, adoptedPreset])
+    setCurrentPreset(adoptedPreset)
+    setSel({})
+    setSharedPreset(null)
+    toast.success(`"${adoptedPreset.name}" added to your presets!`)
   }
 
   // ── Delete item from category ──────────────────────────────────────────────
@@ -1300,7 +1418,17 @@ export default function TapTap() {
         <Dialog open onOpenChange={() => setSharedList(null)}>
           <DialogContent className="bg-card/95 backdrop-blur-md border-border max-w-sm">
             <DialogHeader>
-              <DialogTitle className="font-serif">🛒 {sharedList.n}</DialogTitle>
+              <DialogTitle className="font-serif flex items-center gap-2">
+                🛒 {sharedList.n}
+                {isDemoList && (
+                  <span className="text-[10px] font-normal bg-primary/15 text-primary px-2 py-0.5 rounded-full">demo</span>
+                )}
+              </DialogTitle>
+              {isDemoList && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  This is what receiving a shared list looks like. Save it or tap "Build your own" to start fresh.
+                </p>
+              )}
             </DialogHeader>
             <div className="max-h-64 overflow-y-auto space-y-3 text-sm">
               {(() => {
@@ -1333,10 +1461,42 @@ export default function TapTap() {
             </div>
             <div className="flex flex-col gap-2">
               <Button onClick={saveSharedAsPreset} className="w-full bg-primary hover:bg-primary/90">
-                Save as my preset
+                💾 Save as my preset
               </Button>
               <Button onClick={() => setSharedList(null)} variant="outline" className="w-full border-border hover:bg-muted/70 bg-transparent">
                 Build your own list
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Preset template modal */}
+      {sharedPreset && (
+        <Dialog open onOpenChange={() => setSharedPreset(null)}>
+          <DialogContent className="bg-card/95 backdrop-blur-md border-border max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">🎁 Preset Template</DialogTitle>
+              <p className="text-sm text-muted-foreground pt-1">
+                Someone shared the <strong>{sharedPreset.name}</strong> template with you.
+                Add it to your app — no items are pre-selected, it&apos;s a blank template.
+              </p>
+            </DialogHeader>
+            <div className="text-sm space-y-1 max-h-48 overflow-y-auto">
+              {sharedPreset.categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-2 py-0.5">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="font-medium">{cat.name}</span>
+                  <span className="ml-auto text-muted-foreground text-xs">{cat.items.length} items</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button onClick={saveSharedPreset} className="w-full bg-primary hover:bg-primary/90">
+                ➕ Add to my presets
+              </Button>
+              <Button onClick={() => setSharedPreset(null)} variant="outline" className="w-full border-border hover:bg-muted/70 bg-transparent">
+                Dismiss
               </Button>
             </div>
           </DialogContent>
@@ -1488,6 +1648,16 @@ export default function TapTap() {
               ))}
             </SelectContent>
           </Select>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSharePresetTemplate}
+            className="border-border hover:bg-muted/70 bg-transparent shrink-0"
+            title="Share this preset as a template"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
 
           <Dialog open={showNewPreset} onOpenChange={setShowNewPreset}>
             <DialogTrigger asChild>
