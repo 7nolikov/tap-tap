@@ -16,6 +16,11 @@ import { useTheme } from "next-themes"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
+}
+
 interface Item {
   id: string
   name: string
@@ -128,29 +133,17 @@ function decodeList(search: string, hash: string): DecodeResult {
   }
 }
 
-const APP_URL = "https://7nolikov.github.io/tap-tap/"
+const APP_URL = "https://7nolikov.github.io/tap-tap"
 
 function buildShareText(preset: Preset, sel: Record<string, number>, url: string): string {
-  // Count total selected items
   const totalItems = Object.values(sel).reduce((s, v) => s + v, 0)
-
-  // Social hook: lead with context, not a grocery manifest
-  let text = `I'm sharing my ${preset.name} list — ${totalItems} item${totalItems !== 1 ? "s" : ""} ready to go 🛒\n\n`
-
-  preset.categories.forEach((cat) => {
-    const items = cat.items.filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0)
-    if (items.length > 0) {
-      text += `${cat.name}:\n`
-      items.forEach((item) => {
-        text += `  ${item.emoji} ${item.name} ×${sel[k(cat.id, item.id)]}\n`
-      })
-      text += "\n"
-    }
-  })
-
-  text += `👉 Tap to open & save: ${url}\n`
-  text += `\nShared via TapTap — no sign-up, list travels in the link. ${APP_URL}`
-  return text
+  // Strip leading emoji from preset name so we don't double-up in the message
+  const name = preset.name.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || preset.name
+  return [
+    `🛒 ${name} — ${totalItems} item${totalItems !== 1 ? "s" : ""} ready to tick off`,
+    `👉 Open & tap to build yours: ${url}`,
+    `\nBuilt with TapTap · No sign-up, works on any phone`,
+  ].join("\n")
 }
 
 const PRESET_COLORS = ["#3b82f6", "#10b981", "#ef4444", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#d97706"]
@@ -223,7 +216,7 @@ const DEMO_LIST: ShareData = {
 const defaultPresets: Preset[] = [
   {
     id: "grocery-shopping",
-    name: "Grocery Shopping",
+    name: "🛒 Grocery Shopping",
     categories: [
       {
         id: "dairy",
@@ -1044,7 +1037,7 @@ export default function TapTap() {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0])
   const [editingCat, setEditingCat] = useState<string | null>(null)
-  const [isShorteningUrl, setIsShorteningUrl] = useState(false)
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [sharedPreset, setSharedPreset] = useState<Preset | null>(null)
   const [isDemoList, setIsDemoList] = useState(false)
 
@@ -1109,6 +1102,14 @@ export default function TapTap() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/tap-tap/sw.js").catch(() => { /* ignore in dev */ })
     }
+
+    // Capture PWA install prompt for later use
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault()
+      setDeferredInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstall)
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall)
   }, [])
 
   // Persist presets whenever they change
@@ -1151,32 +1152,26 @@ export default function TapTap() {
     return `${window.location.origin}${window.location.pathname}?list=${hash}`
   }, [currentPreset, sel])
 
-  /** Shorten via is.gd (free, CORS-enabled, no auth). Falls back silently on failure. */
-  const shortenUrl = async (url: string): Promise<string> => {
-    try {
-      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(url)}`)
-      if (!res.ok) return url
-      const data = await res.json()
-      return (data.resulturl as string | undefined) ?? url
-    } catch {
-      return url
-    }
-  }
-
   const handleShare = useCallback(async () => {
     if (!currentPreset) return
     const url = getShareUrl()
     const text = buildShareText(currentPreset, sel, url)
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `${currentPreset.name} list`, text, url })
-      } else {
-        await navigator.clipboard.writeText(text)
-        toast.success("List copied to clipboard!")
-      }
-    } catch {
-      await navigator.clipboard.writeText(text)
-      toast.success("List copied to clipboard!")
+    if (navigator.share) {
+      try { await navigator.share({ title: `${currentPreset.name} list`, text, url }) }
+      catch { /* user cancelled */ }
+    } else {
+      // Desktop: copy URL only (not the full text blob) + offer Twitter/X
+      await navigator.clipboard.writeText(url).catch(() => {})
+      toast.success("Link copied!", {
+        description: "Paste it anywhere — or share on X",
+        action: {
+          label: "Post on X →",
+          onClick: () => window.open(
+            `https://x.com/intent/post?text=${encodeURIComponent(text)}`,
+            "_blank",
+          ),
+        },
+      })
     }
   }, [currentPreset, sel, getShareUrl])
 
@@ -1198,34 +1193,9 @@ export default function TapTap() {
   }, [])
 
   const handleCopyLink = async () => {
-    const longUrl = getShareUrl()
-    const consented = localStorage.getItem("taptap-isgd-ok")
-    if (!consented) {
-      toast("Short Link uses is.gd (third-party URL shortener)", {
-        description: "Only the URL is sent — your list data stays in the URL itself.",
-        action: {
-          label: "Shorten",
-          onClick: async () => {
-            localStorage.setItem("taptap-isgd-ok", "1")
-            setIsShorteningUrl(true)
-            const url = await shortenUrl(longUrl)
-            setIsShorteningUrl(false)
-            await navigator.clipboard.writeText(url).catch(() => {})
-            toast.success(url !== longUrl ? `Copied: ${url}` : "Link copied!")
-          },
-        },
-        cancel: { label: "Copy full URL", onClick: async () => {
-          await navigator.clipboard.writeText(longUrl).catch(() => {})
-          toast.success("Link copied!")
-        }},
-      })
-      return
-    }
-    setIsShorteningUrl(true)
-    const url = await shortenUrl(longUrl)
-    setIsShorteningUrl(false)
+    const url = getShareUrl()
     await navigator.clipboard.writeText(url).catch(() => toast.error("Could not copy link."))
-    toast.success(url !== longUrl ? `Copied: ${url}` : "Link copied!")
+    toast.success("Link copied!")
   }
 
   // ── Share preset template ──────────────────────────────────────────────────
@@ -1472,10 +1442,10 @@ export default function TapTap() {
             </div>
             <div className="flex flex-col gap-2">
               <Button onClick={saveSharedAsPreset} className="w-full bg-primary hover:bg-primary/90">
-                💾 Save as my preset
+                ✅ {isDemoList ? "Use this list" : "Save & start tapping"}
               </Button>
               <Button onClick={() => setSharedList(null)} variant="outline" className="w-full border-border hover:bg-muted/70 bg-transparent">
-                Build your own list
+                {isDemoList ? "Start from scratch — free, no sign-up" : "Dismiss"}
               </Button>
             </div>
           </DialogContent>
@@ -1532,6 +1502,21 @@ export default function TapTap() {
           </div>
 
           <div className="flex gap-1 items-center">
+            {deferredInstallPrompt && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hover:bg-muted/50 text-xs gap-1 hidden sm:flex"
+                onClick={async () => {
+                  await deferredInstallPrompt.prompt()
+                  const { outcome } = await deferredInstallPrompt.userChoice
+                  if (outcome === "accepted") setDeferredInstallPrompt(null)
+                }}
+                aria-label="Install TapTap app"
+              >
+                Install app
+              </Button>
+            )}
             {mounted && (
               <Button
                 variant="ghost"
@@ -1897,11 +1882,10 @@ export default function TapTap() {
               onClick={handleCopyLink}
               size="sm"
               variant="outline"
-              disabled={isShorteningUrl}
               className="border-border hover:bg-muted/70 bg-transparent gap-2"
             >
               <Copy className="w-4 h-4" />
-              {isShorteningUrl ? "…" : "Short Link"}
+              Copy Link
             </Button>
             <Button
               onClick={handleShare}

@@ -54,11 +54,35 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} antialiased`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/tap-tap/manifest.json" />
+        <link rel="icon" type="image/png" href="/tap-tap/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TapTap" />
         <link rel="apple-touch-icon" href="/tap-tap/icon-192.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "TapTap",
+              description:
+                "Tap items, share your grocery list as a link. No sign-up. No server. No tracking. Works offline.",
+              url: APP_URL,
+              applicationCategory: "LifestyleApplication",
+              operatingSystem: "Any",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+              featureList: [
+                "Offline support via service worker",
+                "Zero registration required",
+                "URL-based list sharing — list travels in the link",
+                "16 pre-built templates",
+                "Dark mode",
+              ],
+            }),
+          }}
+        />
       </head>
       <body className={GeistSans.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
