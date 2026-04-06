@@ -129,10 +129,14 @@ function decodeList(search: string, hash: string): DecodeResult {
 }
 
 const APP_URL = "https://7nolikov.github.io/tap-tap/"
-const ATTRIBUTION = `\n\n— Built with TapTap · ${APP_URL}\nNo sign-up. No server. Your list travels as a link.`
 
 function buildShareText(preset: Preset, sel: Record<string, number>, url: string): string {
-  let text = `🛒 ${preset.name}:\n\n`
+  // Count total selected items
+  const totalItems = Object.values(sel).reduce((s, v) => s + v, 0)
+
+  // Social hook: lead with context, not a grocery manifest
+  let text = `I'm sharing my ${preset.name} list — ${totalItems} item${totalItems !== 1 ? "s" : ""} ready to go 🛒\n\n`
+
   preset.categories.forEach((cat) => {
     const items = cat.items.filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0)
     if (items.length > 0) {
@@ -143,8 +147,9 @@ function buildShareText(preset: Preset, sel: Record<string, number>, url: string
       text += "\n"
     }
   })
-  text += `📱 Open list: ${url}`
-  text += ATTRIBUTION
+
+  text += `👉 Tap to open & save: ${url}\n`
+  text += `\nShared via TapTap — no sign-up, list travels in the link. ${APP_URL}`
   return text
 }
 
@@ -1073,9 +1078,11 @@ export default function TapTap() {
 
     // Decode ?list= shared list (or legacy #list=)
     const result = decodeList(window.location.search, window.location.hash)
+    let modalOpen = false
     if (result.ok) {
       setSharedList(result.data)
       setIsDemoList(false)
+      modalOpen = true
       window.history.replaceState(null, "", window.location.pathname)
     } else if (result.broken) {
       toast.error("This share link appears to be broken.")
@@ -1085,13 +1092,15 @@ export default function TapTap() {
       localStorage.setItem("tap-tap-demo-seen", "1")
       setSharedList(DEMO_LIST)
       setIsDemoList(true)
+      modalOpen = true
     } else if (localStorage.getItem("tap-tap-storage-accepted") !== "true" &&
         localStorage.getItem("tap-tap-share-cookie-accepted") !== "true") {
       // Only show storage notice when no modal is open (demo or shared list)
       setShowStorageNotice(true)
     }
 
-    if (!localStorage.getItem("tap-tap-welcome-seen")) {
+    // Welcome banner: only show when no modal is competing for attention
+    if (!modalOpen && !localStorage.getItem("tap-tap-welcome-seen")) {
       setShowWelcome(true)
       localStorage.setItem("tap-tap-welcome-seen", "true")
     }
