@@ -20,14 +20,19 @@ Recipient opens the link → sees the list → can save it as their own preset
 
 The list is compressed with [lz-string](https://github.com/pieroxy/lz-string) and base64-encoded into a query param. A 20-item list fits in a WhatsApp message. The server never sees the data.
 
-`?preset=v2:...` shares a full preset template (all items, nothing pre-selected). `?list=v2:...` shares the selected state.
+`?preset=preset:v1:...` shares a full preset template (all items, nothing pre-selected).
+`?list=v2:...` shares the selected state.
+
+Because the list rides in the URL, link length is a real limit — the UI shows a gauge
+for it rather than letting a chat client silently truncate the link.
 
 ## Features
 
-- Tap to add, tap again to increase quantity, `−` to decrease
-- 16 built-in presets (grocery, BBQ, camping, meal prep, etc.)
+- Tap to add, tap again to increase quantity, `−` to decrease, long-press to type a number
+- A live list panel — pinned beside the grid on desktop, one tap up from the bottom bar on mobile — with a category distribution bar and a link-size gauge
+- Search across every item in a preset
+- 16 built-in presets (grocery, BBQ, camping, meal prep, etc.) on a swipeable rail
 - Share via URL — works on WhatsApp, Telegram, iMessage, Slack, email
-- Optional short link via is.gd (third-party, opt-in)
 - Save a received list as a preset in one tap
 - First-run demo list so new users see the mechanic
 - Edit mode, custom items, custom categories, custom presets
@@ -40,7 +45,7 @@ The list is compressed with [lz-string](https://github.com/pieroxy/lz-string) an
 
 - **Framework:** Next.js 16 (static export)
 - **Storage:** `localStorage` only
-- **Sharing:** URL query params (`?list=v2:...`, `?preset=v2:...`)
+- **Sharing:** URL query params (`?list=v2:...`, `?preset=preset:v1:...`)
 - **Compression:** lz-string (~60% reduction over raw base64)
 - **Validation:** Zod on all `localStorage` and URL inputs
 - **PWA:** service worker, cache-first for static, network-first for shell
@@ -55,14 +60,23 @@ pnpm install
 pnpm dev
 ```
 
-To deploy to GitHub Pages, build and push `/out` to `gh-pages`, or use the included Actions workflow. Update `basePath` / `assetPrefix` in `next.config.mjs` if you change the path.
+```bash
+pnpm typecheck   # tsc --noEmit
+pnpm verify      # share encoding, legacy link formats, palette contrast
+pnpm build       # static export to /out
+```
+
+To deploy to GitHub Pages, build and push `/out` to `gh-pages`, or use the included Actions workflow. Update `basePath` / `assetPrefix` in `next.config.mjs` and `APP_URL` in `lib/config.ts` if you change the path.
 
 ## Architecture notes
 
 - No backend, ever.
 - State lives in `localStorage`. Sharing is URL-encoded via `encodeList()` / `encodePreset()` → `LZString.compressToEncodedURIComponent()`.
 - All incoming URLs are Zod-validated. Malformed links show a toast, not a crash.
-- Backward compatible: old `#list=` hash links and uncompressed `?list=` links still decode.
+- Backward compatible: old `#list=` hash links and uncompressed `?list=` links still decode. `pnpm verify` asserts this.
+- UI/UX decisions and their rationale live in [`docs/DESIGN.md`](docs/DESIGN.md); outstanding work is in [`EXECUTION_PLAN.md`](EXECUTION_PLAN.md).
+
+> Note: `/docs` is gitignored and holds local reference checkouts of other projects. It is excluded from `tsconfig.json` — a vendored `lib.deno.d.ts` in there carries `/// <reference no-default-lib="true" />`, which silently strips `lib.dom` from the whole TypeScript program if the directory is in scope.
 
 ## Contributing
 

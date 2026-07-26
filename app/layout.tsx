@@ -3,12 +3,17 @@ import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
+import { APP_URL } from "@/lib/config"
 import "./globals.css"
 
-const APP_URL = "https://7nolikov.github.io/tap-tap"
-
 export const viewport: Viewport = {
-  themeColor: "#d97706",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fdfcf9" },
+    { media: "(prefers-color-scheme: dark)", color: "#211f1d" },
+  ],
+  // The bottom action bar sits against the home indicator, so the app must own the
+  // safe area rather than letting the browser pad it
+  viewportFit: "cover",
 }
 
 export const metadata: Metadata = {
@@ -87,7 +92,9 @@ export default function RootLayout({
       <body className={GeistSans.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
-          <Toaster richColors position="top-right" />
+          {/* Bottom-centre keeps toasts clear of the app bar; the offset clears the
+              Compact list bar, which is 68px plus the safe-area inset */}
+          <Toaster richColors position="bottom-center" offset="6rem" closeButton />
         </ThemeProvider>
       </body>
     </html>

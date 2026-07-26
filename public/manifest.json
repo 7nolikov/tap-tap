@@ -5,10 +5,14 @@
   "start_url": "/tap-tap/",
   "scope": "/tap-tap/",
   "display": "standalone",
-  "background_color": "#fffbeb",
-  "theme_color": "#d97706",
+  "background_color": "#fdfcf9",
+  "theme_color": "#c2410c",
   "orientation": "portrait-primary",
-  "categories": ["food", "lifestyle", "utilities"],
+  "categories": [
+    "food",
+    "lifestyle",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/tap-tap/icon-192.png",

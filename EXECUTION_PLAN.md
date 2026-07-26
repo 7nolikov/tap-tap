@@ -1,152 +1,236 @@
 # TapTap — Execution Plan
 
-_Last updated: 2026-04-06 — fifth audit (brutal)_
+_Last updated: 2026-07-26 — UI/UX rework_
+
+Companion to [`docs/DESIGN.md`](docs/DESIGN.md). Audit finding IDs (`A1`…`A35`) refer to
+§2 of that document.
 
 ---
 
-## Audit Verdict
+## Status summary
 
-| Dimension | Grade | Notes |
-|-----------|-------|-------|
-| Architecture | A | Clean types, Zod validation, PWA, service worker. Solid bones. |
-| Code Quality | C+ | 1,938-line monolithic page.tsx. APP_URL duplicated AND inconsistent. Dead code (use-toast.ts, isShorteningUrl). |
-| Performance | B | All preset data in bundle, hexToRgba not memoised, no lazy loading. |
-| Deployment | C | GitHub subdirectory URL kills virality. CACHE_VERSION manually bumped (will be forgotten). No analytics. |
-| Viral Readiness | D → B | Share text was too long + attribution buried. Desktop share copied a text blob. is.gd friction. Fixed this session. |
-
----
-
-## Bugs Fixed This Session ✅
-
-| Bug | Description | Status |
-|-----|-------------|--------|
-| BUG-H | APP_URL trailing slash mismatch — layout.tsx had no slash, page.tsx had trailing slash | ✅ Fixed |
-| BUG-I | Desktop share copied full text blob (not URL) — useless clipboard content | ✅ Fixed |
-| BUG-J | Missing `<link rel="icon">` favicon tag | ✅ Fixed |
-| BUG-K | `isShorteningUrl` state + `shortenUrl()` function were is.gd coupling — 3-tap friction to share | ✅ Removed |
-| BUG-L | "Grocery Shopping" preset had no emoji while all 15 others did | ✅ Fixed (🛒) |
-| BUG-M | Share text attribution buried at END — WhatsApp preview only shows first 2 lines | ✅ Fixed |
-| BUG-N | No JSON-LD structured data — zero SEO benefit from landing page | ✅ Fixed |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 0 | Design specification | ✅ Done |
+| 1 | Foundations — tokens, colour utilities, dead code | ✅ Done |
+| 2 | Domain extraction out of `page.tsx` | ✅ Done |
+| 3 | Component layer | ✅ Done |
+| 4 | Page recomposition + responsive layout | ✅ Done |
+| 5 | Accessibility & input correctness | ✅ Done |
+| 6 | Verification | ✅ Done |
+| 7 | Launch items (owner action) | ⏸ Blocked on owner |
 
 ---
 
-## Previous Bug Status
+## Phase 1 — Foundations
 
-| Bug | Description | Status |
-|-----|-------------|--------|
-| BUG-A | `@import 'tw-animate-css'` in globals.css (build-breaking — pkg not installed) | ✅ Fixed (session 4) |
-| BUG-B | Missing `apple-touch-icon` meta tag | ✅ Fixed (session 3) |
-| BUG-C | Demo modal showed double emoji in title | ✅ Fixed (session 3) |
-| BUG-D | Welcome banner fired alongside demo modal (two simultaneous interruptions) | ✅ Fixed (session 4) |
-| BUG-E | "Share (N items)" button copy was meaningless | ✅ Fixed (session 3) |
-| BUG-F | Dead `--sidebar*` CSS variables in globals.css | ✅ Fixed (session 4) |
+### T1.1 — Rebuild the token layer ✅
+`app/globals.css`
 
----
+- Replace the amber theme with the OKLCH surface/foreground/border scale from DESIGN §4.1.
+- Add `--surface-2`, `--border-strong`, elevation `--e1..--e3`, motion `--dur-*`/`--ease`.
+- Remove the three-stop page gradient (A19) and the amber `--border` (A20).
+- Add a global `prefers-reduced-motion` block (A26).
+- Add `.focus-ring`, `.tabular`, `.hide-scrollbar`, safe-area helpers.
 
-## What Is Actually Shipped (live on GitHub Pages) ✅
+**Accept:** no `font-serif` anywhere; dark-mode item tints visible; `pnpm build` clean.
 
-- ✅ URL uses `?list=` query param (survives WhatsApp/Telegram)
-- ✅ lz-string v2 compression
-- ✅ Zod validation on all shared URLs
-- ✅ OG image (1200×630), Twitter card `summary_large_image`
-- ✅ PWA manifest + service worker
-- ✅ 16 presets (all with emojis now)
-- ✅ "Save as my preset" CTA in shared list modal
-- ✅ Dark mode
-- ✅ Export / Import presets
+### T1.2 — Colour utilities ✅
+`lib/color.ts`
 
-## What Was Just Fixed (local, needs push) ❌
+- `tint(hex, pct)` → `color-mix(in oklab, hex pct%, transparent)` (A18).
+- `readableOn(hex)` → WCAG-luminance-derived `#fff` / `#1a1a1a` (A17).
+- `mixWith(hex, other, pct)` for borders.
 
-- ❌ Reformed share text (shorter, attribution first, URL-only desktop copy)
-- ❌ Removed is.gd / isShorteningUrl complexity
-- ❌ Added Twitter/X share for desktop (no Web Share API)
-- ❌ Added `<link rel="icon">` favicon
-- ❌ Added JSON-LD structured data
-- ❌ 🛒 emoji on "Grocery Shopping" preset
-- ❌ PWA install prompt (beforeinstallprompt capture)
-- ❌ Demo modal improved CTAs
+**Accept:** white text never rendered on amber/lime/emerald tiles.
 
----
+### T1.3 — Fix the category palette ✅
+`lib/presets.ts`
 
-## Viral Items Status
+- Replace duplicate `#d97706` with `#84cc16` in `PRESET_COLORS` (A21).
 
-| Item | Description | Status |
-|------|-------------|--------|
-| V-1 | Custom domain (taptap.app / taptap.link) | ❌ Requires owner action |
-| V-2 | Demo list is Christmas Dinner (10 items, 4 categories) | ✅ Done |
-| V-3 | Share text: short, attribution first, URL-only desktop copy | ✅ Fixed this session |
-| V-4 | Branded PWA icon | ✅ Done |
-| V-5 | Launch checklist | ❌ Requires live app |
-| V-6 | Twitter/X share for desktop | ✅ Fixed this session |
-| V-7 | JSON-LD structured data | ✅ Fixed this session |
-| V-8 | PWA install prompt | ✅ Fixed this session |
+### T1.4 — Delete dead code ✅
+
+- `hooks/use-toast.ts` (A31), `hooks/use-mobile.ts` (A31)
+- `styles/globals.css` (A32)
+- `tailwind.config.js` (A33 — inert under Tailwind v4)
+- `components/ui/{card,alert,dialog,select}.tsx` — unreferenced after the rework
+- `@radix-ui/react-select` dependency (its only consumer was the preset dropdown)
+- `types/dom-fix.d.ts` — obsolete once T6.1 fixed the real cause
+- `docs/htmx/` — removed on the assumption it was a vendored dependency. It was not:
+  `/docs` is gitignored local reference material. Not recoverable from git; re-clone
+  from `https://github.com/bigskysoftware/htmx` if it is still wanted. The other
+  reference checkouts under `/docs` were left alone.
+
+**Accept:** ✅ `grep -r "use-toast\|use-mobile\|ui/select\|ui/card\|ui/alert\|ui/dialog"`
+over `app/ components/ lib/ hooks/` returns nothing; build and typecheck pass.
 
 ---
 
-## Remaining Critical Items
+## Phase 2 — Domain extraction
 
-### V-1. Domain — the single biggest remaining viral blocker
+`app/page.tsx` was 1,923 lines with data, schemas, encoding, and every view inline.
 
-**Status: Requires owner action**
+### T2.1 — `lib/types.ts` ✅
+`Item`, `Category`, `Preset`, `SharedItem`, `ShareData`, `Selection`, and the Zod
+schemas. Single source of truth for validation.
 
-`7nolikov.github.io/tap-tap` appears in every WhatsApp attribution message. For European families sharing lists — the primary audience — this URL looks like a phishing link or a GitHub project page. Register `taptap.app` or `taptap.link`. Cost: ~$12/year.
+### T2.2 — `lib/presets.ts` ✅
+`PRESET_COLORS`, `defaultPresets` (16), `DEMO_LIST`.
 
-**Steps once domain is acquired:**
-1. Add `CNAME` file to `public/` with domain name
-2. Update `APP_URL` in `app/layout.tsx` and `app/page.tsx` (single constant in each)
-3. Update `metadataBase` in layout.tsx
-4. Update `start_url` and `scope` in `public/manifest.json`
-5. Update service worker cache paths in `public/sw.js`
-6. Enable HTTPS in GitHub Pages settings
-7. Remove `basePath` and `assetPrefix` from `next.config.mjs` (no longer needed at root domain)
+### T2.3 — `lib/share.ts` ✅
+`APP_URL` (one constant, imported by both `layout.tsx` and the app — fixes the historic
+duplication), `encodeList`, `decodeList`, `encodePreset`, `decodePreset`,
+`sharedToPreset`, `buildShareText`, `linkBudget()` for the size meter (A4).
 
-### V-5. Launch checklist
+**Accept:** `?list=v2:`, legacy `?list=<base64>` and `#list=` all still decode.
 
-1. **Commit everything + push** — triggers CI, deploys to GitHub Pages
-2. **Verify live site** — open on phone, test share flow end-to-end, test demo list, test PWA install
-3. **Generate 3 demo share URLs** — Christmas Dinner, BBQ Party, Date Night
-4. **Show HN** — "Show HN: I built a grocery list where the entire list lives in the URL"
-5. **Reddit r/selfhosted** — "No server. No account. The list is the URL."
-6. **Reddit r/mealplanning** — "Share your shopping list with one link, no app install"
-7. **Twitter/X** — share a demo URL and a screenshot
-8. **Product Hunt** — after HN validates
+### T2.4 — `lib/storage.ts` ✅
+Namespaced keys, schema-validated read, quota-safe write, and per-preset selection
+persistence in `sessionStorage` (DESIGN §7.2).
 
----
+### T2.5 — `hooks/use-selection.ts` ✅
+Selection state machine: `tap`, `dec`, `setQty`, `remove`, `clear`, `restore`,
+derived `total`, `byCategory`, `presetTotals`. Owns the undo snapshot.
 
-## Remaining Technical Debt (non-blocking)
-
-| Issue | Impact | Fix |
-|-------|--------|-----|
-| 1,938-line monolithic page.tsx | Maintenance debt | Split into components (never the right time until it breaks) |
-| `use-toast.ts` hook is dead code | Bundle bloat | Delete the file |
-| `CACHE_VERSION` in sw.js manually bumped | Deploy risk | Auto-increment via build script |
-| `hexToRgba` not memoised | Minor perf | Wrap in useMemo |
-| No analytics | Flying blind | Add Plausible or SimpleAnalytics (privacy-safe) |
-| Preset selector is a dropdown | UX friction on mobile | Horizontal scroll tabs |
-| No item search/filter | UX for power users | Search input above grid |
-| Reset button has no confirmation | Accidental data loss | Confirm dialog or long-press |
+### T2.6 — `hooks/use-media-query.ts` ✅
+SSR-safe `useMediaQuery` for the Compact/Expanded switch.
 
 ---
 
-## Architecture Constraints (never violate)
+## Phase 3 — Component layer
 
-- **No backend.** All state is localStorage. All sharing is URL-encoded.
-- **No authentication.** Zero friction is a feature.
-- **Static export only.** GitHub Pages. No server-side features.
-- **Backward compatibility.** v2 lz-string links, v1 base64 links, and legacy `#list=` hash links all decode correctly. Never break existing shared URLs.
+| Task | Component | Fixes | Status |
+|------|-----------|-------|--------|
+| T3.1 | `AppBar` — wordmark, search toggle, theme, overflow menu | A8, A24 | ✅ |
+| T3.2 | `PresetRail` — snap-scrolling chip tablist with per-preset badges | A5 | ✅ |
+| T3.3 | `SearchBar` — live cross-category filter with match highlighting | A6 | ✅ |
+| T3.4 | `CategorySection` — collapsible section, selected-count pill, empty state | A3, A7, A30 | ✅ |
+| T3.5 | `ItemTile` — `<button aria-pressed>`, 44 px steppers, long-press quantity, haptics, pointer-guarded hover | A9–A14, A22, A25 | ✅ |
+| T3.6 | `ListPanel` — grouped selection, distribution bar, link meter, actions | A1, A2, A4 | ✅ |
+| T3.7 | `ListBar` — bottom summary with safe-area inset | A2, A27 | ✅ |
+| T3.8 | `ResponsiveDialog` — sheet on Compact, dialog on Expanded | — | ✅ |
+| T3.9 | `SharedListDialog`, `PresetTemplateDialog`, `QuantityDialog`, `ConfirmDialog`, `AboutSheet`, `PresetManagerDialog` | A15, A28 | ✅ |
+| T3.10 | `Onboarding` — single-interruption queue + hint strip + first-tile pulse | A28, A29 | ✅ |
+| T3.11 | `LiveRegion` — debounced polite announcements | A23 | ✅ |
+
+---
+
+## Phase 4 — Page recomposition
+
+### T4.1 — Responsive shell ✅
+- Compact/Medium: single column + `ListBar` + expandable `ListPanel` sheet.
+- Expanded (≥1024 px): two-pane grid, 360 px sticky `ListPanel`, no bottom bar.
+- Content max-width 720 px below Expanded, 1200 px above.
+
+### T4.2 — Wire state ✅
+Selection hook, search, collapse state, onboarding queue, share handlers, preset CRUD,
+import/export, PWA install prompt.
+
+**Accept:** `app/page.tsx` reduced to composition; no data or encoding logic left in it.
+
+---
+
+## Phase 5 — Accessibility & input correctness
+
+| Task | Fix | Status |
+|------|-----|--------|
+| T5.1 | Tiles keyboard-operable, `aria-pressed`, descriptive labels | A22 | ✅ |
+| T5.2 | Live region for count + search results | A23 | ✅ |
+| T5.3 | `aria-label` on every icon-only control | A24 | ✅ |
+| T5.4 | Count badge so selection is not colour-only | A25 | ✅ |
+| T5.5 | Global reduced-motion handling | A26 | ✅ |
+| T5.6 | `env(safe-area-inset-bottom)` on the bottom bar | A27 | ✅ |
+| T5.7 | Clear/delete confirmation + 6 s undo | A15 | ✅ |
+| T5.8 | Emoji input uses grapheme-safe truncation (`Intl.Segmenter`) | A14 | ✅ |
+| T5.9 | Direct quantity entry (long-press / badge tap) | A10 | ✅ |
+| T5.10 | Toast placement per breakpoint, clear of the action bar | — | ✅ |
+| T5.11 | Focus ring on all interactive elements | — | ✅ |
+
+---
+
+## Phase 6 — Verification
+
+### T6.1 — Restore real type checking ✅
+
+The diagnosis recorded in `next.config.mjs` was wrong. It blamed a "known `@types/node`
+vs DOM lib conflict" and worked around it with `types/dom-fix.d.ts` plus
+`typescript.ignoreBuildErrors: true`.
+
+The actual cause: `tsconfig.json` had `include: ["**/*.ts", "**/*.tsx"]` and excluded
+only `node_modules`. `/docs` is a gitignored folder of local reference checkouts
+(supabase, tailwindcss.com, telegram-apps — several GB), and one of them,
+`docs/supabase/apps/studio/public/deno/lib.deno.d.ts`, begins with:
+
+```
+/// <reference no-default-lib="true" />
+```
+
+That directive strips the default libraries from the **entire** program, so `lib.dom`
+was never loaded — confirmed with `tsc --listFiles`. Every DOM symbol then fell back to
+the empty stub interfaces in `@types/react/global.d.ts`, which is why the errors looked
+like `Property 'focus' does not exist on type 'HTMLInputElement'` and
+`Cannot find name 'document'`.
+
+**Fix:** add `docs`, `out` and `.next` to `tsconfig.json`'s `exclude`. With that one
+line, all errors disappear; `types/dom-fix.d.ts` and `ignoreBuildErrors` were both
+deleted as unnecessary.
+
+**Accept:** ✅ `pnpm typecheck` passes with zero errors and no suppression.
+
+### T6.2 — Build ✅
+`pnpm build` produces a clean static export with TypeScript checking enabled, and no CSS
+warnings. (An earlier arbitrary-variant typo, `[@media(hover:hover)and(pointer:fine)]`,
+emitted malformed CSS; fixed to `_and_`.)
+
+### T6.3 — Behavioural verification ✅
+`scripts/verify.mjs`, run via `pnpm verify`. 37 assertions, all passing, covering:
+
+- v2 round-trip preserves name, item count, quantities and category colours
+- legacy `?list=<base64>` and `#list=<base64>` still decode
+- malformed and wrong-shape payloads report `broken` rather than throwing
+- `?preset=` templates encode/decode, and a list payload is rejected as a preset
+- `sharedToPreset` regenerates unique category and item ids
+- link budget thresholds
+- **every palette colour reaches ≥4.5:1 against the foreground `readableOn()` picks**
+- grapheme-safe emoji truncation and diacritic-insensitive search folding
+
+This check caught a defect in the rework itself: the first `readableOn()` used a 0.45
+luminance threshold, but the true white/dark crossover is ≈0.204, so amber tiles kept
+their unreadable white text. It also showed `#8b5cf6` is unfixable — at luminance 0.198
+neither foreground reaches AA — so the default violet became `#a78bfa`.
+
+### T6.4 — Rendered-output pass ✅
+Dev server checked: 46 item tiles and 16 preset tabs render server-side with
+`aria-pressed` and descriptive `aria-label`s intact, and the compiled CSS contains the
+`(hover: hover) and (pointer: fine)` guard, `safe-area-inset-bottom`,
+`prefers-reduced-motion`, and the sheet/dialog keyframes.
+
+**Not verified:** no browser automation was available in this environment, so gesture
+behaviour (long-press quantity, drag-dismiss, haptics) and real-device rendering have
+not been exercised. Worth a manual pass on a phone before deploying.
+
+---
+
+## Phase 7 — Launch (owner action, unchanged)
+
+| # | Item | Status |
+|---|------|--------|
+| L1 | Register `taptap.app` / `taptap.link`; the GitHub Pages subdirectory URL reads as a phishing link in WhatsApp attribution | ⏸ owner |
+| L2 | On domain acquisition: `public/CNAME`, `APP_URL` in `lib/share.ts`, `metadataBase`, `manifest.json` `start_url`/`scope`, `sw.js` cache paths, drop `basePath`/`assetPrefix` | ⏸ blocked on L1 |
+| L3 | Show HN — "a grocery list where the entire list lives in the URL" | ⏸ after deploy |
+| L4 | Reddit r/selfhosted, r/mealplanning | ⏸ after L3 |
+| L5 | Product Hunt | ⏸ after L3 |
+| L6 | Privacy-safe analytics (Plausible) — decision pending | ❌ |
+| L7 | Auto-increment `CACHE_VERSION` in `sw.js` at build time | ❌ |
+
+---
+
+## Architecture constraints (never violate)
+
+- **No backend.** All state is localStorage/sessionStorage. All sharing is URL-encoded.
+- **No authentication.** Zero friction is the feature.
+- **Static export only.** GitHub Pages.
+- **Backward compatibility.** `v2:` lz-string links, v1 base64 links and legacy `#list=`
+  links must all keep decoding.
 - **Use pnpm, not npm.** CI uses `pnpm-lock.yaml`.
-
----
-
-## Priority Table
-
-| # | Item | Severity | Status |
-|---|------|----------|--------|
-| 0 | **Commit and push all pending changes** | CRITICAL | ❌ |
-| 1 | Custom domain | CRITICAL for viral | ⏸ owner action |
-| 2 | Launch: Show HN | CRITICAL | ❌ (after deploy) |
-| 3 | Launch: Reddit r/selfhosted, r/mealplanning | HIGH | ❌ (after HN) |
-| 4 | Launch: Product Hunt | HIGH | ❌ (after HN) |
-| 5 | Delete dead use-toast.ts | LOW | ❌ |
-| 6 | Analytics (Plausible) | MEDIUM | ❌ |
-| 7 | Custom domain infra changes | CRITICAL (once domain bought) | ⏸ |

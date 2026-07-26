@@ -2,98 +2,137 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Tokens ──────────────────────────────────────────────────────────────────
+   Authored in OKLCH so light and dark stay perceptually matched.
+   See docs/DESIGN.md §4.
+──────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #fefdf8;
-  --foreground: #4a2c2a;
-  --card: rgba(255, 253, 248, 0.9);
-  --card-foreground: #6b4423;
-  --popover: rgba(255, 253, 248, 0.95);
-  --popover-foreground: #4a2c2a;
-  --primary: #d97706;
-  --primary-foreground: #ffffff;
-  --secondary: #dc2626;
-  --secondary-foreground: #ffffff;
-  --muted: #fef3c7;
-  --muted-foreground: #92400e;
-  --accent: #059669;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #fbbf24;
-  --input: #ffffff;
-  --ring: rgba(217, 119, 6, 0.3);
-  --chart-1: #d97706;
-  --chart-2: #dc2626;
-  --chart-3: #059669;
-  --chart-4: #fbbf24;
-  --chart-5: #4a2c2a;
+  --background: oklch(0.985 0.005 80);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.97 0.006 80);
+  --foreground: oklch(0.24 0.015 60);
+  --muted-foreground: oklch(0.53 0.015 60);
+  --border: oklch(0.9 0.008 75);
+  --border-strong: oklch(0.84 0.01 75);
+
+  --primary: oklch(0.58 0.155 45);
+  --primary-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(1 0 0);
+  --caution: oklch(0.68 0.15 70);
+
+  --ring: oklch(0.58 0.155 45 / 0.55);
+
+  /* Aliases kept so shadcn primitives resolve without a rewrite */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --muted: var(--surface-2);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--foreground);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--foreground);
+  --input: var(--border-strong);
+
   --radius: 0.75rem;
+
+  --e1: 0 1px 2px oklch(0 0 0 / 0.06);
+  --e2: 0 6px 16px -6px oklch(0 0 0 / 0.12);
+  --e3: 0 -6px 20px -8px oklch(0 0 0 / 0.14);
+
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .dark {
-  --background: #1c1917;
-  --foreground: #fef3c7;
-  --card: rgba(28, 25, 23, 0.9);
-  --card-foreground: #fed7aa;
-  --popover: rgba(28, 25, 23, 0.95);
-  --popover-foreground: #fef3c7;
-  --primary: #f59e0b;
-  --primary-foreground: #1c1917;
-  --secondary: #ef4444;
-  --secondary-foreground: #ffffff;
-  --muted: #44403c;
-  --muted-foreground: #a8a29e;
-  --accent: #10b981;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #78716c;
-  --input: #44403c;
-  --ring: rgba(245, 158, 11, 0.3);
-  --chart-1: #f59e0b;
-  --chart-2: #ef4444;
-  --chart-3: #10b981;
-  --chart-4: #78716c;
-  --chart-5: #fef3c7;
+  --background: oklch(0.175 0.008 70);
+  --surface: oklch(0.215 0.01 70);
+  --surface-2: oklch(0.255 0.011 70);
+  --foreground: oklch(0.96 0.008 85);
+  --muted-foreground: oklch(0.71 0.014 80);
+  --border: oklch(0.31 0.012 70);
+  --border-strong: oklch(0.4 0.014 70);
+
+  --primary: oklch(0.74 0.145 55);
+  --primary-foreground: oklch(0.19 0.02 60);
+  --destructive: oklch(0.63 0.19 25);
+  --destructive-foreground: oklch(0.15 0.01 60);
+  --caution: oklch(0.78 0.14 75);
+
+  --ring: oklch(0.74 0.145 55 / 0.6);
+
+  --e1: 0 1px 2px oklch(0 0 0 / 0.3);
+  --e2: 0 6px 16px -6px oklch(0 0 0 / 0.5);
+  --e3: 0 -6px 20px -8px oklch(0 0 0 / 0.55);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-caution: var(--caution);
+  --color-ring: var(--ring);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-e1: var(--e1);
+  --shadow-e2: var(--e2);
+  --shadow-e3: var(--e3);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
   }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
+    /* Prevents iOS rubber-banding from revealing a white strip under the fixed bar */
+    overscroll-behavior-y: none;
+  }
+
+  /* One focus treatment, applied everywhere. Never removed. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* The number columns in counts and totals must not jitter as values change */
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -101,12 +140,124 @@
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
-  .break-words {
-    word-wrap: break-word;
-    word-break: break-word;
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bottom bar must clear the iOS home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* ─── Surface transitions ─────────────────────────────────────────────────────
+   tailwindcss-animate is not wired into Tailwind v4's plugin pipeline, so the
+   `animate-in` utilities the shadcn primitives ship with are inert. These are the
+   real animations for overlays and sheets.
+──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes taptap-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes taptap-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes taptap-zoom-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes taptap-zoom-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes taptap-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes taptap-slide-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+[data-taptap-overlay][data-state="open"] {
+  animation: taptap-fade-in var(--dur-base) var(--ease);
+}
+[data-taptap-overlay][data-state="closed"] {
+  animation: taptap-fade-out var(--dur-fast) var(--ease);
+}
+[data-taptap-dialog][data-state="open"] {
+  animation: taptap-zoom-in var(--dur-base) var(--ease);
+}
+[data-taptap-dialog][data-state="closed"] {
+  animation: taptap-zoom-out var(--dur-fast) var(--ease);
+}
+[data-taptap-sheet][data-state="open"] {
+  animation: taptap-slide-up var(--dur-base) var(--ease);
+}
+[data-taptap-sheet][data-state="closed"] {
+  animation: taptap-slide-down var(--dur-fast) var(--ease);
+}
+
+/* First-visit affordance on the first item tile — removed on first interaction */
+@keyframes taptap-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--ring);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+.pulse-hint {
+  animation: taptap-pulse 1.8s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
