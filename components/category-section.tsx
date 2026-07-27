@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ItemTile } from "@/components/item-tile"
 import { cn } from "@/lib/utils"
 import { firstGrapheme } from "@/lib/text"
+import { adjustCents, formatCents, type StoreTierId } from "@/lib/economics"
 import { k, type Category, type Selection } from "@/lib/types"
 
 interface CategorySectionProps {
@@ -14,6 +15,7 @@ interface CategorySectionProps {
   /** Items after search filtering; may be a subset of `category.items`. */
   visibleItemIds: Set<string> | null
   sel: Selection
+  tier: StoreTierId
   collapsed: boolean
   editing: boolean
   searchTerm: string
@@ -31,6 +33,7 @@ export function CategorySection({
   category,
   visibleItemIds,
   sel,
+  tier,
   collapsed,
   editing,
   searchTerm,
@@ -55,6 +58,15 @@ export function CategorySection({
     (sum, item) => sum + (sel[k(category.id, item.id)] ?? 0),
     0,
   )
+
+  // Running cost in the header, so you can see a category getting expensive without
+  // opening the list panel — on a phone the panel is a tap away, which is a tap too far
+  // to notice you have put €40 of meat in a €90 shop.
+  const selectedCents = category.items.reduce((sum, item) => {
+    const qty = sel[k(category.id, item.id)] ?? 0
+    if (qty === 0 || item.cents == null) return sum
+    return sum + adjustCents(item.cents, { tier }) * qty
+  }, 0)
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,6 +97,11 @@ export function CategorySection({
           <span className="flex-1 truncate text-[14px] font-semibold tracking-[-0.005em]">
             {category.name}
           </span>
+          {selectedCents > 0 && (
+            <span data-numeric className="text-muted-foreground text-[12px]">
+              {formatCents(selectedCents)}
+            </span>
+          )}
           {selectedCount > 0 && (
             <span
               data-numeric
@@ -131,6 +148,10 @@ export function CategorySection({
                   color={category.color}
                   qty={sel[k(category.id, item.id)] ?? 0}
                   editing={editing}
+                  unit={item.unit}
+                  cents={item.cents}
+                  tier={tier}
+                  trend={item.trend}
                   hint={hintItemId === item.id}
                   highlight={searchTerm || undefined}
                   onIncrement={() => onIncrement(item.id)}

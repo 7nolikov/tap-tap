@@ -1,53 +1,278 @@
 "use client"
 
-import { Copy, Minus, Plus, Share2, Trash2 } from "lucide-react"
+import { Copy, Minus, Plus, Share2, TrendingUp, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { tint } from "@/lib/color"
 import { linkBudget, type LinkStatus } from "@/lib/share"
 import { LINK_BUDGET } from "@/lib/config"
 import { plural } from "@/lib/text"
+import {
+  ANNUAL_FOOD_INFLATION,
+  PRICE_BASELINE,
+  SPIKE_LABEL,
+  STORE_TIERS,
+  adjustCents,
+  basketCost,
+  formatCents,
+  formatCentsShort,
+  monthsSinceBaseline,
+  readBudget,
+  tierById,
+  type StoreTierId,
+} from "@/lib/economics"
 import type { CategoryTally } from "@/hooks/use-selection"
+import type { Persona } from "@/lib/types"
+
+/** What the distribution bar and legend are measuring. */
+export type Measure = "count" | "cost"
 
 // ─── Distribution bar ─────────────────────────────────────────────────────────
 
+export interface Segment {
+  id: string
+  name: string
+  color: string
+  value: number
+}
+
 /**
- * Stacked bar showing each category's share of the total quantity. Answers "is this
- * shop balanced, or did I forget the vegetables?" at a glance — the one piece of real
- * data visualisation in the app.
+ * Stacked bar showing each category's share of the whole.
+ *
+ * Deliberately measure-agnostic. The same component draws "share of items" and "share
+ * of spend", and the interesting thing about this app's data is that those two pictures
+ * disagree — one pack of nappies is 5 % of the items and 30 % of the bill. A bar that
+ * could only ever count would hide exactly the finding worth showing.
  */
 export function DistributionBar({
-  tallies,
-  total,
+  segments,
   className,
   height = "h-2",
+  format = String,
+  label = "Distribution",
 }: {
-  tallies: CategoryTally[]
-  total: number
+  segments: Segment[]
   className?: string
   height?: string
+  format?: (value: number) => string
+  label?: string
 }) {
+  const total = segments.reduce((sum, seg) => sum + seg.value, 0)
   if (total === 0) return null
 
   // Slivers below 4% would be invisible, so they are clamped and the rest absorb it
-  const raw = tallies.map((cat) => Math.max(4, (cat.count / total) * 100))
+  const raw = segments.map((seg) => Math.max(4, (seg.value / total) * 100))
   const sum = raw.reduce((s, v) => s + v, 0)
 
   return (
     <div
       className={cn("bg-surface-2 flex w-full overflow-hidden rounded-full", height, className)}
       role="img"
-      aria-label={`Distribution: ${tallies.map((c) => `${c.name} ${c.count}`).join(", ")}`}
+      aria-label={`${label}: ${segments.map((s) => `${s.name} ${format(s.value)}`).join(", ")}`}
     >
-      {tallies.map((cat, i) => (
+      {segments.map((seg, i) => (
         <div
-          key={cat.id}
+          key={seg.id}
           className={cn("h-full", i > 0 && "border-l-2 border-[var(--surface)]")}
-          style={{ width: `${(raw[i] / sum) * 100}%`, backgroundColor: cat.color }}
-          title={`${cat.name}: ${cat.count} of ${total}`}
+          style={{ width: `${(raw[i] / sum) * 100}%`, backgroundColor: seg.color }}
+          title={`${seg.name}: ${format(seg.value)} of ${format(total)}`}
         />
       ))}
     </div>
+  )
+}
+
+export const countSegments = (tallies: CategoryTally[]): Segment[] =>
+  tallies.map((cat) => ({ id: cat.id, name: cat.name, color: cat.color, value: cat.count }))
+
+// ─── Measure toggle ───────────────────────────────────────────────────────────
+
+function MeasureToggle({
+  measure,
+  onChange,
+}: {
+  measure: Measure
+  onChange: (next: Measure) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Measure the list by"
+      className="bg-surface-2 flex shrink-0 rounded-full p-0.5"
+    >
+      {(["count", "cost"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          aria-pressed={measure === option}
+          className={cn(
+            "rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+            measure === option
+              ? "bg-surface text-foreground shadow-e1"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {option === "count" ? "Items" : "Cost"}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Store tier ───────────────────────────────────────────────────────────────
+
+/**
+ * Where you shop moves a grocery bill further than almost anything you can change
+ * inside the basket, so it is a first-class control rather than a setting. Flipping it
+ * is the fastest way to see the economics move.
+ */
+export function StoreTierControl({
+  tier,
+  onChange,
+}: {
+  tier: StoreTierId
+  onChange: (next: StoreTierId) => void
+}) {
+  const active = tierById(tier)
+  const delta = Math.round((active.factor - 1) * 100)
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+          Where you shop
+        </span>
+        <span className="text-muted-foreground truncate text-[11px]">
+          {active.example}
+          {delta !== 0 && (
+            <span data-numeric className={delta > 0 ? "text-caution" : "text-primary"}>
+              {" "}
+              {delta > 0 ? "+" : ""}
+              {delta}%
+            </span>
+          )}
+        </span>
+      </div>
+      <div role="group" aria-label="Store type" className="bg-surface-2 flex rounded-sm p-0.5">
+        {STORE_TIERS.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            aria-pressed={tier === option.id}
+            className={cn(
+              "min-h-9 flex-1 rounded-[calc(var(--radius-sm)-2px)] text-[12px] font-medium transition-colors",
+              tier === option.id
+                ? "bg-surface text-foreground shadow-e1"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {option.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Basket meter ─────────────────────────────────────────────────────────────
+
+const BUDGET_FILL = {
+  under: "bg-primary",
+  near: "bg-caution",
+  over: "bg-destructive",
+} as const
+
+/**
+ * The basket total against what this household actually has to spend.
+ *
+ * A total on its own is a number; a total against a budget is a decision. Presets that
+ * carry no persona (yours, or one someone sent you) get the total without the gauge
+ * rather than an invented budget to measure against.
+ */
+export function BasketMeter({
+  totalCents,
+  unpricedItems,
+  persona,
+}: {
+  totalCents: number
+  unpricedItems: number
+  persona?: Persona
+}) {
+  const budget = persona ? readBudget(totalCents, persona.weeklyBudgetCents) : null
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+          Basket
+        </span>
+        <span data-numeric className="text-[17px] leading-6 font-semibold">
+          {formatCents(totalCents)}
+        </span>
+      </div>
+
+      {budget && (
+        <>
+          <div className="bg-surface-2 h-2 w-full overflow-hidden rounded-full">
+            <div
+              className={cn("h-full rounded-full transition-[width]", BUDGET_FILL[budget.status])}
+              style={{ width: `${budget.ratio * 100}%` }}
+              role="img"
+              aria-label={`${Math.round(budget.share * 100)}% of a ${formatCents(budget.budgetCents)} weekly budget`}
+            />
+          </div>
+          <div className="flex items-baseline justify-between gap-2 text-[12px]">
+            <span
+              className={cn(
+                budget.status === "over" && "text-destructive",
+                budget.status === "near" && "text-caution",
+                budget.status === "under" && "text-muted-foreground",
+              )}
+            >
+              {budget.status === "over" ? (
+                <>
+                  <span data-numeric>{formatCents(-budget.remainingCents)}</span> over budget
+                </>
+              ) : (
+                <>
+                  <span data-numeric>{formatCents(budget.remainingCents)}</span> left this week
+                </>
+              )}
+            </span>
+            <span data-numeric className="text-muted-foreground">
+              {formatCentsShort(Math.round(totalCents / persona!.household))}/person
+            </span>
+          </div>
+        </>
+      )}
+
+      {unpricedItems > 0 && (
+        <p className="text-muted-foreground text-[11px]">
+          <span data-numeric>{unpricedItems}</span>{" "}
+          {plural(unpricedItems, "item has", "items have")} no price — not counted above.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Says out loud how old the prices are, so nobody mistakes them for live data. */
+export function PriceProvenance() {
+  const months = monthsSinceBaseline()
+  return (
+    <p className="text-muted-foreground text-[11px] leading-4">
+      {PRICE_BASELINE.region} prices, {PRICE_BASELINE.month}
+      {months > 0 && (
+        <>
+          {" "}
+          — aged forward <span data-numeric>{months}</span> {plural(months, "month")} at{" "}
+          <span data-numeric>{(ANNUAL_FOOD_INFLATION * 100).toFixed(1)}%</span>/yr
+        </>
+      )}
+      . Indicative only.
+    </p>
   )
 }
 
@@ -99,9 +324,14 @@ export function LinkMeter({ urlLength }: { urlLength: number }) {
 
 // ─── Panel body ───────────────────────────────────────────────────────────────
 
-interface ListPanelBodyProps {
+export interface ListPanelBodyProps {
   tallies: CategoryTally[]
   total: number
+  tier: StoreTierId
+  onTierChange: (next: StoreTierId) => void
+  measure: Measure
+  onMeasureChange: (next: Measure) => void
+  persona?: Persona
   onIncrement: (catId: string, itemId: string) => void
   onDecrement: (catId: string, itemId: string) => void
   onRemove: (key: string) => void
@@ -110,10 +340,17 @@ interface ListPanelBodyProps {
 export function ListPanelBody({
   tallies,
   total,
+  tier,
+  onTierChange,
+  measure,
+  onMeasureChange,
+  persona,
   onIncrement,
   onDecrement,
   onRemove,
 }: ListPanelBodyProps) {
+  const cost = basketCost(tallies, { tier })
+
   if (total === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
@@ -129,10 +366,28 @@ export function ListPanelBody({
     )
   }
 
+  const costById = new Map(cost.byCategory.map((cat) => [cat.id, cat.cents]))
+  const segments: Segment[] =
+    measure === "cost"
+      ? cost.byCategory.map((cat) => ({ ...cat, value: cat.cents }))
+      : countSegments(tallies)
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <DistributionBar tallies={tallies} total={total} />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground text-[11px] font-semibold tracking-[0.06em] uppercase">
+            {measure === "cost" ? "Share of spend" : "Share of items"}
+          </span>
+          <MeasureToggle measure={measure} onChange={onMeasureChange} />
+        </div>
+
+        <DistributionBar
+          segments={segments}
+          format={measure === "cost" ? formatCents : String}
+          label={measure === "cost" ? "Spend by category" : "Items by category"}
+        />
+
         <ul className="flex flex-wrap gap-x-3 gap-y-1">
           {tallies.map((cat) => (
             <li key={cat.id} className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
@@ -143,11 +398,21 @@ export function ListPanelBody({
               />
               {cat.name}
               <span data-numeric className="text-foreground font-semibold">
-                {cat.count}
+                {measure === "cost" ? formatCents(costById.get(cat.id) ?? 0) : cat.count}
               </span>
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="space-y-3 rounded-md border p-3">
+        <BasketMeter
+          totalCents={cost.totalCents}
+          unpricedItems={cost.unpricedItems}
+          persona={persona}
+        />
+        <StoreTierControl tier={tier} onChange={onTierChange} />
+        <PriceProvenance />
       </div>
 
       {tallies.map((cat) => (
@@ -162,8 +427,8 @@ export function ListPanelBody({
               aria-hidden="true"
             />
             {cat.name}
-            <span data-numeric className="text-muted-foreground ml-auto">
-              {cat.count}
+            <span data-numeric className="text-muted-foreground ml-auto font-normal">
+              {cat.count} · {formatCents(costById.get(cat.id) ?? 0)}
             </span>
           </p>
           <ul className="space-y-0.5">
@@ -173,7 +438,16 @@ export function ListPanelBody({
                 className="hover:bg-surface-2 flex items-center gap-2 rounded-sm py-0.5 pr-0.5 pl-1.5 transition-colors"
               >
                 <span aria-hidden="true">{item.emoji}</span>
-                <span className="min-w-0 flex-1 truncate text-[14px]">{item.name}</span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-[14px]">{item.name}</span>
+                  {item.cents != null && (
+                    <span data-numeric className="text-muted-foreground text-[11px] leading-4">
+                      {item.unit ? `${item.unit} · ` : ""}
+                      {formatCents(adjustCents(item.cents, { tier }))}
+                      {item.qty > 1 && ` × ${item.qty}`}
+                    </span>
+                  )}
+                </span>
 
                 <div className="flex items-center">
                   <MiniStep
@@ -240,6 +514,15 @@ function MiniStep({
   )
 }
 
+/** Marker for goods repriced by a supply shock rather than ones that are simply dear. */
+export function SpikeMark({ className }: { className?: string }) {
+  return (
+    <span title={SPIKE_LABEL} aria-label={SPIKE_LABEL} className={cn("inline-flex", className)}>
+      <TrendingUp className="size-3" strokeWidth={2.5} aria-hidden="true" />
+    </span>
+  )
+}
+
 // ─── Panel actions ────────────────────────────────────────────────────────────
 
 interface ListPanelActionsProps {
@@ -286,7 +569,8 @@ export function ListPanelActions({
 // ─── Composed panel (Expanded right rail) ─────────────────────────────────────
 
 export function ListPanel(props: ListPanelBodyProps & Omit<ListPanelActionsProps, "total">) {
-  const { total } = props
+  const { total, tallies, tier } = props
+  const cost = basketCost(tallies, { tier })
   return (
     <aside
       aria-label="Your list"
@@ -296,6 +580,7 @@ export function ListPanel(props: ListPanelBodyProps & Omit<ListPanelActionsProps
         <h2 className="text-[18px] font-semibold tracking-[-0.01em]">Your list</h2>
         <span data-numeric className="text-muted-foreground text-[13px]">
           {total} {plural(total, "item")}
+          {cost.totalCents > 0 && ` · ${formatCents(cost.totalCents)}`}
         </span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">

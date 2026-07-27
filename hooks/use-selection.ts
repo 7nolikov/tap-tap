@@ -6,12 +6,24 @@ import { k, type Preset, type Selection } from "@/lib/types"
 
 const MAX_QTY = 99
 
+export interface TalliedItem {
+  id: string
+  name: string
+  emoji: string
+  qty: number
+  key: string
+  /** Carried through so the cost view reads from the same structure as the count view. */
+  unit?: string
+  cents?: number
+  trend?: "spike"
+}
+
 export interface CategoryTally {
   id: string
   name: string
   color: string
   count: number
-  items: Array<{ id: string; name: string; emoji: string; qty: number; key: string }>
+  items: TalliedItem[]
 }
 
 /**
@@ -143,6 +155,9 @@ export function useSelection(presetId: string | null) {
               emoji: item.emoji,
               qty: sel[k(cat.id, item.id)] ?? 0,
               key: k(cat.id, item.id),
+              unit: item.unit,
+              cents: item.cents,
+              trend: item.trend,
             }))
             .filter((item) => item.qty > 0)
           return {

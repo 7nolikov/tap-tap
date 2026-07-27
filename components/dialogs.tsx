@@ -5,6 +5,7 @@ import { Download, Github, Smartphone, Trash2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
+import { adjustCents, DEFAULT_TIER, formatCents } from "@/lib/economics"
 import { PRESET_COLORS } from "@/lib/presets"
 import { groupShared } from "@/lib/share"
 import { plural } from "@/lib/text"
@@ -26,6 +27,13 @@ export function SharedListDialog({
   const groups = groupShared(data)
   const total = data.i.reduce((s, item) => s + item.q, 0)
 
+  // Priced at the standard tier: this is someone else's list, and their supermarket is
+  // not a fact we know. The recipient's own tier applies once they save it.
+  const totalCents = data.i.reduce(
+    (sum, item) => sum + (item.p != null ? adjustCents(item.p, { tier: DEFAULT_TIER }) * item.q : 0),
+    0,
+  )
+
   return (
     <ResponsiveDialog
       open
@@ -43,7 +51,9 @@ export function SharedListDialog({
       description={
         isDemo
           ? "This is what receiving a shared list looks like. Save it, or start from scratch."
-          : `${total} ${plural(total, "item")} across ${groups.length} ${plural(groups.length, "group")}.`
+          : `${total} ${plural(total, "item")} across ${groups.length} ${plural(groups.length, "group")}${
+              totalCents > 0 ? ` · about ${formatCents(totalCents)}` : ""
+            }.`
       }
       footer={
         <div className="flex flex-col gap-2">
@@ -74,9 +84,22 @@ export function SharedListDialog({
             </p>
             <ul className="space-y-0.5 pl-3.5">
               {group.items.map((item, i) => (
-                <li key={i} className="flex items-center gap-2 text-[14px]">
+                <li key={i} className="flex items-baseline gap-2 text-[14px]">
                   <span aria-hidden="true">{item.e}</span>
-                  <span className="min-w-0 flex-1 truncate">{item.l}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {item.l}
+                    {item.u && (
+                      <span data-numeric className="text-muted-foreground text-[11px]">
+                        {" "}
+                        {item.u}
+                      </span>
+                    )}
+                  </span>
+                  {item.p != null && (
+                    <span data-numeric className="text-muted-foreground text-[12px]">
+                      {formatCents(adjustCents(item.p, { tier: DEFAULT_TIER }) * item.q)}
+                    </span>
+                  )}
                   <span data-numeric className="text-muted-foreground">
                     ×{item.q}
                   </span>
@@ -417,10 +440,17 @@ export function PresetManagerDialog({
             key={preset.id}
             className="hover:bg-surface-2 flex items-center gap-2 rounded-sm py-1 pr-0.5 pl-2 transition-colors"
           >
-            <span
-              className={`min-w-0 flex-1 truncate text-[14px] ${preset.id === currentId ? "font-semibold" : ""}`}
-            >
-              {preset.name}
+            <span className="flex min-w-0 flex-1 flex-col py-0.5">
+              <span
+                className={`truncate text-[14px] ${preset.id === currentId ? "font-semibold" : ""}`}
+              >
+                {preset.name}
+              </span>
+              {preset.persona && (
+                <span className="text-muted-foreground truncate text-[11px] leading-4">
+                  {preset.persona.who}
+                </span>
+              )}
             </span>
             <span data-numeric className="text-muted-foreground text-[12px]">
               {preset.categories.reduce((s, c) => s + c.items.length, 0)}

@@ -8,8 +8,14 @@ import { AppBar } from "@/components/app-bar"
 import { CategorySection } from "@/components/category-section"
 import { HintStrip } from "@/components/hint-strip"
 import { ListBar } from "@/components/list-bar"
-import { ListPanel, ListPanelActions, ListPanelBody } from "@/components/list-panel"
+import {
+  ListPanel,
+  ListPanelActions,
+  ListPanelBody,
+  type Measure,
+} from "@/components/list-panel"
 import { LiveRegion } from "@/components/live-region"
+import { PersonaStrip } from "@/components/persona-strip"
 import { PresetRail } from "@/components/preset-rail"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import {
@@ -24,6 +30,7 @@ import {
 } from "@/components/dialogs"
 
 import { useSelection } from "@/hooks/use-selection"
+import { basketCost, formatCents, DEFAULT_TIER, type StoreTierId } from "@/lib/economics"
 import { DEMO_LIST, PRESET_COLORS, defaultPresets } from "@/lib/presets"
 import {
   buildShareText,
@@ -50,6 +57,9 @@ export default function TapTap() {
   const [currentPresetId, setCurrentPresetId] = useState<string | null>(
     defaultPresets[0]?.id ?? null,
   )
+
+  const [tier, setTier] = useState<StoreTierId>(DEFAULT_TIER)
+  const [measure, setMeasure] = useState<Measure>("count")
 
   const [search, setSearch] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
@@ -80,17 +90,32 @@ export default function TapTap() {
     useSelection(currentPresetId)
 
   const tallies = useMemo(() => tallyFor(currentPreset), [tallyFor, currentPreset])
+  const cost = useMemo(() => basketCost(tallies, { tier }), [tallies, tier])
 
   // ── Boot ───────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     setMounted(true)
 
-    const loaded = storage.loadPresets(defaultPresets)
+    const { presets: loaded, upgradeAvailable } = storage.loadPresets(defaultPresets)
     setPresets(loaded)
     const savedId = storage.loadCurrentPresetId()
     setCurrentPresetId(loaded.find((p) => p.id === savedId)?.id ?? loaded[0]?.id ?? null)
     setCollapsed(storage.loadCollapsed())
+    setTier(storage.loadTier())
+    setMeasure(storage.loadMeasure())
+
+    // Their own presets are in here, so the new defaults are offered, never forced
+    if (upgradeAvailable) {
+      toast("New built-in presets", {
+        description: "Ten shoppers with real prices, replacing the old occasion lists.",
+        action: {
+          label: "Add them",
+          onClick: () => setPresets((prev) => [...defaultPresets, ...prev]),
+        },
+        duration: 10000,
+      })
+    }
 
     // Onboarding queue — at most one blocking surface (docs/DESIGN.md §6.9)
     const incomingPreset = decodePreset(window.location.search)
@@ -141,6 +166,14 @@ export default function TapTap() {
     if (mounted) storage.saveCollapsed(collapsed)
   }, [collapsed, mounted])
 
+  useEffect(() => {
+    if (mounted) storage.saveTier(tier)
+  }, [tier, mounted])
+
+  useEffect(() => {
+    if (mounted) storage.saveMeasure(measure)
+  }, [measure, mounted])
+
   // ── Search ─────────────────────────────────────────────────────────────────
 
   const { visibleByCategory, matchCount } = useMemo(() => {
@@ -173,7 +206,7 @@ export default function TapTap() {
 
   const handleShare = useCallback(async () => {
     if (!currentPreset || !shareUrl) return
-    const text = buildShareText(currentPreset, total, shareUrl)
+    const text = buildShareText(currentPreset, total, shareUrl, cost.totalCents)
     if (navigator.share) {
       try {
         await navigator.share({ title: `${currentPreset.name} list`, text, url: shareUrl })
@@ -192,7 +225,7 @@ export default function TapTap() {
           window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}`, "_blank"),
       },
     })
-  }, [currentPreset, shareUrl, total])
+  }, [currentPreset, shareUrl, total, cost.totalCents])
 
   const handleCopy = useCallback(async () => {
     if (!shareUrl) return
@@ -415,12 +448,19 @@ export default function TapTap() {
     matchCount !== null
       ? `${matchCount} matching ${plural(matchCount, "item")}`
       : total > 0
-        ? `${total} ${plural(total, "item")} in your list`
+        ? `${total} ${plural(total, "item")} in your list${
+            cost.totalCents > 0 ? `, ${formatCents(cost.totalCents)}` : ""
+          }`
         : ""
 
   const panelProps = {
     tallies,
     total,
+    tier,
+    onTierChange: setTier,
+    measure,
+    onMeasureChange: setMeasure,
+    persona: currentPreset?.persona,
     onIncrement: tap,
     onDecrement: dec,
     onRemove: removeKey,
@@ -461,6 +501,10 @@ export default function TapTap() {
             />
           </div>
 
+          {!search && currentPreset?.persona && (
+            <PersonaStrip name={currentPreset.name} persona={currentPreset.persona} />
+          )}
+
           {showHint && (
             <HintStrip
               onDismiss={() => {
@@ -482,6 +526,7 @@ export default function TapTap() {
               category={cat}
               visibleItemIds={visibleByCategory?.get(cat.id) ?? null}
               sel={sel}
+              tier={tier}
               collapsed={!search && !!collapsed[cat.id]}
               editing={editingCat === cat.id}
               searchTerm={search}
@@ -523,6 +568,8 @@ export default function TapTap() {
       <ListBar
         tallies={tallies}
         total={total}
+        tier={tier}
+        measure={measure}
         onExpand={() => setListSheetOpen(true)}
         onShare={handleShare}
       />
@@ -533,7 +580,9 @@ export default function TapTap() {
         onOpenChange={setListSheetOpen}
         forceSheet
         title="Your list"
-        description={`${total} ${plural(total, "item")} across ${tallies.length} ${plural(tallies.length, "group")}`}
+        description={`${total} ${plural(total, "item")} across ${tallies.length} ${plural(tallies.length, "group")}${
+          cost.totalCents > 0 ? ` · ${formatCents(cost.totalCents)}` : ""
+        }`}
         footer={<ListPanelActions {...panelProps} />}
       >
         <ListPanelBody {...panelProps} />

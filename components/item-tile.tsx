@@ -4,6 +4,8 @@ import { useCallback, useRef } from "react"
 import { Minus, Plus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { readableOn, tint } from "@/lib/color"
+import { SpikeMark } from "@/components/list-panel"
+import { adjustCents, formatCents, type StoreTierId } from "@/lib/economics"
 
 const LONG_PRESS_MS = 500
 
@@ -20,6 +22,12 @@ interface ItemTileProps {
   color: string
   qty: number
   editing: boolean
+  /** Pack size, e.g. "1 L". Absent on user-created items. */
+  unit?: string
+  /** Baseline price in cents; adjusted for `tier` here so the tile and the panel agree. */
+  cents?: number
+  tier: StoreTierId
+  trend?: "spike"
   /** Highlights the first tile for first-time visitors. */
   hint?: boolean
   /** Search term to highlight inside the label. */
@@ -36,6 +44,10 @@ export function ItemTile({
   color,
   qty,
   editing,
+  unit,
+  cents,
+  tier,
+  trend,
   hint = false,
   highlight,
   onIncrement,
@@ -45,6 +57,7 @@ export function ItemTile({
 }: ItemTileProps) {
   const selected = qty > 0
   const fg = selected ? readableOn(color) : undefined
+  const priced = cents != null ? formatCents(adjustCents(cents, { tier })) : null
 
   // A long press must not also register as a tap when the finger lifts
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -86,12 +99,17 @@ export function ItemTile({
     [onDecrement],
   )
 
-  const label = selected ? `${name}, ${qty} selected` : `Add ${name}`
+  // The unit is part of the item's identity, not decoration — "2 Milk" is ambiguous in
+  // a way "2 × 1 L Milk" is not, and a screen reader user has no tile to read it off.
+  const meta = [unit, priced].filter(Boolean).join(", ")
+  const label = [selected ? `${name}, ${qty} selected` : `Add ${name}`, meta]
+    .filter(Boolean)
+    .join(", ")
 
   return (
     <div
       className={cn(
-        "relative flex min-h-[112px] flex-col rounded-md border transition-[background-color,border-color,transform] duration-[120ms]",
+        "relative flex min-h-[128px] flex-col rounded-md border transition-[background-color,border-color,transform] duration-[120ms]",
         hint && "pulse-hint",
       )}
       style={
@@ -147,6 +165,27 @@ export function ItemTile({
         >
           {highlight ? <Highlighted text={name} term={highlight} /> : name}
         </span>
+
+        {/* Opacity rather than a muted colour token: the tile's background flips to the
+            raw category colour when selected, where a fixed grey stops being legible. */}
+        {(unit || priced) && (
+          <span
+            className={cn(
+              "mt-auto flex items-center gap-1 text-[11px] leading-4 opacity-70",
+              !selected && "text-muted-foreground opacity-100",
+            )}
+            aria-hidden="true"
+          >
+            {unit && <span data-numeric className="truncate">{unit}</span>}
+            {unit && priced && <span aria-hidden="true">·</span>}
+            {priced && (
+              <span data-numeric className="font-semibold">
+                {priced}
+              </span>
+            )}
+            {trend === "spike" && <SpikeMark className="shrink-0" />}
+          </span>
+        )}
       </div>
 
       {/* Reserved 44px strip. Present at qty 0 too, so tapping never reflows the grid.

@@ -1,13 +1,16 @@
 import LZString from "lz-string"
 import { LINK_BUDGET } from "@/lib/config"
+import { formatCents } from "@/lib/economics"
 import { PRESET_COLORS } from "@/lib/presets"
 import {
   k,
   PresetSchema,
   ShareDataSchema,
+  ShareDataV3Schema,
   type Preset,
   type Selection,
   type ShareData,
+  type ShareDataV3,
   type SharedItem,
 } from "@/lib/types"
 
@@ -15,29 +18,78 @@ export type DecodeResult = { ok: true; data: ShareData } | { ok: false; broken: 
 
 // ─── Lists ────────────────────────────────────────────────────────────────────
 
+/**
+ * Emits v3: categories declared once, items as positional tuples.
+ *
+ * Price and unit ride along because the recipient has no database to look the item up
+ * in — without them a received list is words, and a total is impossible on their side.
+ * Prices go over at *baseline*, never tier-adjusted: where the sender shops is a fact
+ * about the sender, not about the list.
+ */
 export function encodeList(preset: Preset, sel: Selection): string {
-  const items: SharedItem[] = preset.categories.flatMap((cat) =>
-    cat.items
-      .filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0)
-      .map((item) => ({
-        c: cat.name,
-        e: item.emoji,
-        l: item.name,
-        q: sel[k(cat.id, item.id)],
-        k: cat.color,
-      })),
-  )
-  return "v2:" + LZString.compressToEncodedURIComponent(JSON.stringify({ n: preset.name, i: items }))
+  const selected = preset.categories
+    .map((cat) => ({
+      cat,
+      items: cat.items.filter((item) => (sel[k(cat.id, item.id)] ?? 0) > 0),
+    }))
+    .filter((group) => group.items.length > 0)
+
+  const payload: ShareDataV3 = {
+    n: preset.name,
+    c: selected.map((group) => [group.cat.name, group.cat.color]),
+    i: selected.flatMap((group, index) =>
+      group.items.map(
+        (item) =>
+          [
+            index,
+            item.emoji,
+            item.name,
+            sel[k(group.cat.id, item.id)],
+            item.cents ?? 0,
+            item.unit ?? "",
+          ] as [number, string, string, number, number, string],
+      ),
+    ),
+  }
+  return "v3:" + LZString.compressToEncodedURIComponent(JSON.stringify(payload))
+}
+
+/** v3 tuples → the keyed shape the rest of the app already speaks. */
+function fromV3(data: ShareDataV3): ShareData {
+  return {
+    n: data.n,
+    i: data.i.map(([catIndex, emoji, label, qty, cents, unit]) => {
+      const category = data.c[catIndex]
+      return {
+        c: category?.[0] ?? "Items",
+        e: emoji,
+        l: label,
+        q: qty,
+        ...(category?.[1] ? { k: category[1] } : {}),
+        ...(cents > 0 ? { p: cents } : {}),
+        ...(unit ? { u: unit } : {}),
+      }
+    }),
+  }
 }
 
 /**
- * Decodes a shared list. Three formats must keep working forever:
- *   `?list=v2:<lz-string>` (current), `?list=<base64>` (v1), `#list=<base64>` (legacy).
+ * Decodes a shared list. Four formats must keep working forever:
+ *   `?list=v3:<lz-string>` (current), `?list=v2:<lz-string>`, `?list=<base64>` (v1),
+ *   `#list=<base64>` (legacy). Links already sent outlive every format change.
  */
 export function decodeList(search: string, hash: string): DecodeResult {
   const raw = new URLSearchParams(search).get("list") ?? (hash.startsWith("#list=") ? hash.slice(6) : null)
   if (!raw) return { ok: false, broken: false }
   try {
+    if (raw.startsWith("v3:")) {
+      const json = LZString.decompressFromEncodedURIComponent(raw.slice(3))
+      if (!json) return { ok: false, broken: true }
+      const parsed = ShareDataV3Schema.safeParse(JSON.parse(json))
+      return parsed.success
+        ? { ok: true, data: fromV3(parsed.data) }
+        : { ok: false, broken: true }
+    }
     const json = raw.startsWith("v2:")
       ? LZString.decompressFromEncodedURIComponent(raw.slice(3))
       : decodeURIComponent(atob(raw))
@@ -68,6 +120,8 @@ export function sharedToPreset(data: ShareData): Preset {
         id: `item-${ts}-${idx}-${iIdx}`,
         name: item.l,
         emoji: item.e,
+        ...(item.p != null ? { cents: item.p } : {}),
+        ...(item.u ? { unit: item.u } : {}),
       })),
     })),
   }
@@ -114,10 +168,17 @@ export function stripLeadingEmoji(name: string): string {
   return name.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || name
 }
 
-export function buildShareText(preset: Preset, total: number, url: string): string {
+/** `totalCents` is omitted for lists where nothing carries a price. */
+export function buildShareText(
+  preset: Preset,
+  total: number,
+  url: string,
+  totalCents?: number,
+): string {
   const name = stripLeadingEmoji(preset.name)
+  const cost = totalCents && totalCents > 0 ? ` · about ${formatCents(totalCents)}` : ""
   return [
-    `🛒 ${name} — ${total} item${total !== 1 ? "s" : ""} ready to tick off`,
+    `🛒 ${name} — ${total} item${total !== 1 ? "s" : ""} ready to tick off${cost}`,
     `👉 Open & tap to build yours: ${url}`,
     `\nBuilt with TapTap · No sign-up, works on any phone`,
   ].join("\n")
